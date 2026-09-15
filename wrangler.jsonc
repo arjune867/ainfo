@@ -21,7 +21,7 @@
   "r2_buckets": [
     {
       "binding": "MEDIA",
-      "bucket_name": "ainfo-media"
+      "bucket_name": "ainfo-media-prod"
     }
   ],
   "vars": {
