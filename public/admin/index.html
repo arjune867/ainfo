@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="robots" content="noindex,nofollow,noarchive">
   <meta name="theme-color" content="#07274b">
-  <title>AINFO V14 Production Admin</title>
+  <title>AINFO V14.1 Production Admin</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="../icon-48.png">
   <link rel="apple-touch-icon" href="../icon-180.png">
@@ -26,7 +26,7 @@
   <div class="mobile-top"><button class="icon-btn" onclick="toggleSidebar(true)"><i class="bi bi-list"></i></button><img src="../AINFO.png" alt="AINFO"><b>Admin CMS</b><div class="spacer"></div><button class="icon-btn" onclick="installAdminPwa()"><i class="bi bi-download"></i></button></div>
   <div class="layout">
     <aside class="sidebar" id="sidebar">
-      <div class="brand"><img src="../AINFO.png" alt="AINFO"><div><b>AINFO Admin</b><small>V14 · Production Admin</small></div></div>
+      <div class="brand"><img src="../AINFO.png" alt="AINFO"><div><b>AINFO Admin</b><small>V14.1 · Production Admin</small></div></div>
       <div class="menu-group"><span>Overview</span><div class="nav"><button class="active" data-sec="dashboard"><i class="bi bi-grid"></i> Dashboard</button></div></div>
       <div class="menu-group"><span>Konten</span><div class="nav"><button data-sec="articles"><i class="bi bi-newspaper"></i> Berita</button><button data-sec="shop"><i class="bi bi-bag"></i> Shopping</button><button data-sec="video"><i class="bi bi-play-btn"></i> Video</button><button data-sec="jobs"><i class="fa-solid fa-briefcase"></i> Jobs & Jooble</button></div></div>
       <div class="menu-group"><span>Audience</span><div class="nav"><button data-sec="users"><i class="bi bi-people"></i> Pengguna & Otorisasi</button><button data-sec="push"><i class="bi bi-bell"></i> Push Notifikasi</button></div></div>
@@ -58,6 +58,7 @@ const LS_STATE='ainfo-v9-state',LS_ARTICLES='ainfo-admin-articles',LS_PRODUCTS='
 const money=n=>'Rp'+Number(n||0).toLocaleString('id-ID');
 const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 const uid=()=>Date.now()+Math.floor(Math.random()*999);
+const img=(seed)=>`https://picsum.photos/seed/${encodeURIComponent(seed)}/900/560`;
 const DEFAULT_CATS=['Nasional','Politik','Ekonomi','Bisnis','Teknologi','Dunia','Olahraga','Lifestyle','Hiburan','Otomotif'];
 const seedArticles=[
   {id:1,cat:'Nasional',title:'Pemerintah Percepat Pemulihan Pascaerupsi Gunung Lewotobi',excerpt:'Pemerintah menyiapkan bantuan darurat dan relokasi sementara bagi warga terdampak erupsi.',author:'Tim AINFO',time:'15 Sep 2026 • 03:50 WIB',read:'5 menit baca',views:'152K',image:img('volcano-ainfo'),status:'published',headline:true,publishedISO:'2026-09-15T03:50:00+07:00',modifiedISO:'2026-09-15T04:05:00+07:00',content:['Pemerintah terus mempercepat proses pemulihan pascaerupsi dengan memastikan bantuan darurat dan kebutuhan dasar menjangkau warga terdampak.','Tim di lapangan juga memetakan kebutuhan relokasi, layanan kesehatan, akses pendidikan, dan pemulihan ekonomi keluarga.','AINFO akan terus memperbarui perkembangan berdasarkan informasi terverifikasi dari pihak terkait.']},
@@ -198,3 +199,4 @@ renderDashboard();
 </script>
 </body>
 </html>
+
