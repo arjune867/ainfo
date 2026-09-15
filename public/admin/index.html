@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="robots" content="noindex,nofollow,noarchive">
   <meta name="theme-color" content="#07274b">
-  <title>AINFO V13 Admin CMS</title>
+  <title>AINFO V14 Production Admin</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="../icon-48.png">
   <link rel="apple-touch-icon" href="../icon-180.png">
@@ -26,7 +26,7 @@
   <div class="mobile-top"><button class="icon-btn" onclick="toggleSidebar(true)"><i class="bi bi-list"></i></button><img src="../AINFO.png" alt="AINFO"><b>Admin CMS</b><div class="spacer"></div><button class="icon-btn" onclick="installAdminPwa()"><i class="bi bi-download"></i></button></div>
   <div class="layout">
     <aside class="sidebar" id="sidebar">
-      <div class="brand"><img src="../AINFO.png" alt="AINFO"><div><b>AINFO Admin</b><small>V13 · Pre-Production PWA</small></div></div>
+      <div class="brand"><img src="../AINFO.png" alt="AINFO"><div><b>AINFO Admin</b><small>V14 · Production Admin</small></div></div>
       <div class="menu-group"><span>Overview</span><div class="nav"><button class="active" data-sec="dashboard"><i class="bi bi-grid"></i> Dashboard</button></div></div>
       <div class="menu-group"><span>Konten</span><div class="nav"><button data-sec="articles"><i class="bi bi-newspaper"></i> Berita</button><button data-sec="shop"><i class="bi bi-bag"></i> Shopping</button><button data-sec="video"><i class="bi bi-play-btn"></i> Video</button><button data-sec="jobs"><i class="fa-solid fa-briefcase"></i> Jobs & Jooble</button></div></div>
       <div class="menu-group"><span>Audience</span><div class="nav"><button data-sec="users"><i class="bi bi-people"></i> Pengguna & Otorisasi</button><button data-sec="push"><i class="bi bi-bell"></i> Push Notifikasi</button></div></div>
@@ -34,7 +34,7 @@
     </aside>
     <main class="main">
       <div class="topbar"><div><h1 id="pageTitle">Dashboard</h1><p id="pageDesc">Ringkasan portal, konten, integrasi, dan aktivitas.</p></div><div class="actions"><button class="btn" id="adminInstallBtn" onclick="installAdminPwa()"><i class="bi bi-download"></i><span>Install Admin</span></button><a class="btn" href="../index.html#/home"><i class="bi bi-box-arrow-up-right"></i><span>Lihat Website</span></a></div></div>
-      <div class="notice"><b>Mode production-ready.</b> Dashboard terpisah dari situs publik dan dilindungi Basic Auth oleh server lokal. Data konten disimpan ke localStorage untuk review; modul pengguna memakai SQLite backend lokal.</div>
+      <div class="notice" id="productionStatus"><b>AINFO V14 Production.</b> Dashboard terhubung ke Cloudflare Worker, D1, R2, dan API server-side. Status layanan sedang diperiksa…</div>
 
       <section class="section active" id="sec-dashboard"></section>
       <section class="section" id="sec-articles"></section>
@@ -166,6 +166,35 @@ async function loadUsersCount(){try{const r=await fetch('/api/admin/users');cons
 let deferredInstall=null;window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;document.getElementById('adminInstallBtn')?.classList.add('install-admin')});async function installAdminPwa(){if(deferredInstall){deferredInstall.prompt();await deferredInstall.userChoice;deferredInstall=null;toast('Permintaan instalasi diproses')}else toast('Gunakan menu browser → Install app bila prompt belum tersedia')}
 if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
 renderDashboard();
+</script>
+
+<script>
+(function(){
+  async function enforceAdminSession(){
+    try{
+      const r=await fetch('/api/auth/me',{credentials:'include',cache:'no-store'});
+      const d=await r.json().catch(()=>({}));
+      const u=d.user;
+      const allowed=['editor','admin','superadmin'];
+      if(!u){ location.replace('/#/login?next='+encodeURIComponent('/admin/')); return false; }
+      if(!allowed.includes(String(u.role||''))){
+        document.body.innerHTML='<div style="min-height:100vh;display:grid;place-items:center;background:#f4f7fb;font-family:Inter,system-ui;padding:24px"><div style="max-width:520px;background:#fff;border:1px solid #e5eaf1;border-radius:18px;padding:28px;text-align:center"><h1 style="margin:0 0 8px">Akses Ditolak</h1><p style="color:#6f7f93">Akun ini tidak memiliki izin untuk membuka Dashboard AINFO.</p><a href="/" style="display:inline-block;margin-top:12px;padding:10px 16px;border-radius:10px;background:#0b5ed7;color:white;text-decoration:none;font-weight:800">Kembali ke Website</a></div></div>';
+        return false;
+      }
+      return true;
+    }catch(e){return true}
+  }
+  async function updateProductionStatus(){
+    const el=document.getElementById('productionStatus'); if(!el)return;
+    try{
+      const r=await fetch('/api/health',{cache:'no-store'}); const d=await r.json();
+      const svc=d.services||{};
+      const badge=(name,ok)=>`<span style="display:inline-flex;align-items:center;gap:5px;margin:4px 5px 0 0;padding:5px 8px;border-radius:999px;background:${ok?'#e8f9f1':'#fff3e5'};color:${ok?'#08795a':'#9a5d00'};font-weight:800">${ok?'●':'○'} ${name}</span>`;
+      el.innerHTML=`<b>AINFO V14 Production.</b> Dashboard terhubung ke backend Cloudflare.<div style="margin-top:7px">${badge('D1',svc.d1!==false)}${badge('R2',svc.r2!==false)}${badge('Jooble',svc.jooble===true)}${badge('DOKU',svc.doku===true)}${badge('Google Login',svc.google===true)}${badge('Turnstile',svc.turnstile===true)}</div>`;
+    }catch(e){el.innerHTML='<b>AINFO V14 Production.</b> Backend belum dapat diverifikasi. Periksa <code>/api/health</code> dan konfigurasi Worker.'}
+  }
+  document.addEventListener('DOMContentLoaded',async()=>{if(await enforceAdminSession()) updateProductionStatus()});
+})();
 </script>
 </body>
 </html>
