@@ -21,7 +21,7 @@
     "/rss.xml",
     "/feed.xml"
   ]
-}
+},
   "d1_databases": [
     {
       "binding": "DB",
