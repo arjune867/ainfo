@@ -26,7 +26,7 @@
     {
       "binding": "DB",
       "database_name": "ainfo-db",
-      "database_id": "105007d1-0a57-4957-9f32-3c2f5d094d1a",
+      "database_id": "105007d1-0a57-4957-9f32-3c2f5d094d1",
       "migrations_dir": "migrations"
     }
   ],
