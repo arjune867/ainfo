@@ -1,0 +1,36 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ainfo-web-id",
+  "main": "worker/src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "workers_dev": true,
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "single-page-application"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ainfo-db",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "ainfo-media"
+    }
+  ],
+  "vars": {
+    "DOMAIN": "https://www.ainfo.web.id",
+    "JOOBLE_BASE_URL": "https://id.jooble.org",
+    "DOKU_ENV": "sandbox",
+    "BACKUP_PREFIX": "backups"
+  },
+  "triggers": {
+    "crons": ["*/5 * * * *", "0 2 * * *"]
+  }
+}

@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Sitemap: https://www.ainfo.web.id/sitemap.xml
+Sitemap: https://www.ainfo.web.id/news-sitemap.xml
