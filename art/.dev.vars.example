@@ -1,0 +1,31 @@
+# Copy to .dev.vars for local development. Never commit real secret values.
+# DEV_AUTH_EMAIL simulates Cloudflare Access locally only.
+DEV_AUTH_EMAIL=admin@example.com
+
+# Publishing
+AINFO_PUBLISH_URL=https://www.ainfo.web.id/api/internal/publish
+AINFO_PUBLISH_TOKEN=
+WORDPRESS_PUBLISH_URL=
+WORDPRESS_AUTH_HEADER=
+BLOGGER_PUBLISH_URL=
+BLOGGER_AUTH_HEADER=
+GENERIC_PUBLISH_URL=
+GENERIC_AUTH_HEADER=
+
+# 7 AI providers
+OPENAI_API_KEY=
+GEMINI_API_KEY=
+ANTHROPIC_API_KEY=
+GROQ_API_KEY=
+MISTRAL_API_KEY=
+DEEPSEEK_API_KEY=
+OPENROUTER_API_KEY=
+
+# Optional model overrides. Defaults already exist in worker code.
+OPENAI_MODEL=
+GEMINI_MODEL=
+ANTHROPIC_MODEL=
+GROQ_MODEL=
+MISTRAL_MODEL=
+DEEPSEEK_MODEL=
+OPENROUTER_MODEL=
