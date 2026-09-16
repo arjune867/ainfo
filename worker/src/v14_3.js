@@ -1,6 +1,6 @@
 import previousWorker from './v14_2.js';
 
-const VERSION = '14.3.0';
+const VERSION = '14.3.1';
 const previous = previousWorker;
 
 function json(data, status = 200, headers = {}) {
@@ -25,6 +25,35 @@ function timingSafe(a, b) {
   let diff = 0;
   for (let i = 0; i < left.length; i++) diff |= left.charCodeAt(i) ^ right.charCodeAt(i);
   return diff === 0;
+}
+
+function cookies(req) {
+  const out = {};
+  for (const part of String(req.headers.get('cookie') || '').split(';')) {
+    const i = part.indexOf('=');
+    if (i > 0) out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim());
+  }
+  return out;
+}
+
+function csrfOk(req) {
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return true;
+  const cookieToken = cookies(req).ainfo_csrf || '';
+  const headerToken = req.headers.get('x-csrf-token') || '';
+  return Boolean(cookieToken && headerToken && timingSafe(cookieToken, headerToken));
+}
+
+async function adminAllowed(req, env, ctx) {
+  try {
+    const url = new URL(req.url);
+    url.pathname = '/api/admin/users';
+    url.search = '';
+    const probe = new Request(url.toString(), { method: 'GET', headers: req.headers });
+    const res = await previous.fetch(probe, env, ctx);
+    return res.status === 200;
+  } catch {
+    return false;
+  }
 }
 
 function publishAuthorized(req, env) {
@@ -105,6 +134,122 @@ function uniqueStrings(values) {
     out.push(text);
   }
   return out;
+}
+
+function stickerOut(row) {
+  return {
+    id: Number(row.id),
+    code: String(row.code || ''),
+    name: String(row.name || ''),
+    category: String(row.category || 'Karakter'),
+    url: String(row.public_url || ''),
+    mimeType: String(row.mime_type || ''),
+    sizeBytes: Number(row.size_bytes || 0),
+    active: Boolean(row.is_active),
+    sortOrder: Number(row.sort_order || 0),
+    createdAt: row.created_at || null,
+  };
+}
+
+async function publicStickers(env) {
+  try {
+    const rows = await env.DB.prepare(`SELECT id,code,name,category,public_url,mime_type,size_bytes,is_active,sort_order,created_at
+      FROM sticker_library WHERE is_active=1 ORDER BY sort_order ASC, id DESC LIMIT 300`).all();
+    return json({ ok: true, stickers: (rows.results || []).map(stickerOut) }, 200, { 'cache-control': 'public, max-age=60, s-maxage=120' });
+  } catch (error) {
+    console.error('AINFO sticker public list failed', error);
+    return json({ ok: true, stickers: [] });
+  }
+}
+
+async function adminStickers(req, env, ctx) {
+  if (!(await adminAllowed(req, env, ctx))) return json({ error: 'forbidden' }, 403);
+  try {
+    const rows = await env.DB.prepare(`SELECT id,code,name,category,public_url,mime_type,size_bytes,is_active,sort_order,created_at
+      FROM sticker_library ORDER BY sort_order ASC, id DESC LIMIT 500`).all();
+    return json({ ok: true, stickers: (rows.results || []).map(stickerOut) });
+  } catch (error) {
+    console.error('AINFO sticker admin list failed', error);
+    return json({ error: 'sticker_list_failed' }, 500);
+  }
+}
+
+async function uploadSticker(req, env, ctx) {
+  if (!(await adminAllowed(req, env, ctx))) return json({ error: 'forbidden' }, 403);
+  if (!csrfOk(req)) return json({ error: 'csrf_failed' }, 403);
+
+  const contentLength = Number(req.headers.get('content-length') || 0);
+  if (contentLength > 6 * 1024 * 1024) return json({ error: 'file_too_large', message: 'Maksimal 5 MB per stiker.' }, 413);
+
+  const fd = await req.formData().catch(() => null);
+  if (!fd) return json({ error: 'invalid_form' }, 400);
+  const file = fd.get('file');
+  if (!(file instanceof File)) return json({ error: 'missing_file' }, 400);
+  if (file.size > 5 * 1024 * 1024) return json({ error: 'file_too_large', message: 'Maksimal 5 MB per stiker.' }, 413);
+
+  const allowed = new Map([
+    ['image/gif', 'gif'],
+    ['image/png', 'png'],
+    ['image/webp', 'webp'],
+    ['image/jpeg', 'jpg'],
+    ['image/avif', 'avif'],
+  ]);
+  const ext = allowed.get(String(file.type || '').toLowerCase());
+  if (!ext) return json({ error: 'invalid_media_type', message: 'Gunakan GIF, PNG, WebP, JPG, atau AVIF.' }, 415);
+
+  const rawName = String(fd.get('name') || file.name || 'Stiker').trim();
+  const name = (rawName.replace(/\.[^.]+$/, '') || 'Stiker').slice(0, 80);
+  const category = (String(fd.get('category') || 'Karakter').trim() || 'Karakter').slice(0, 60);
+  const uuid = crypto.randomUUID();
+  const code = `${slugify(name).slice(0, 42)}-${uuid.slice(0, 8)}`;
+  const key = `stickers/custom/${new Date().toISOString().slice(0, 7)}/${uuid}.${ext}`;
+  const publicUrl = `/media/${key}`;
+
+  try {
+    await env.MEDIA.put(key, await file.arrayBuffer(), {
+      httpMetadata: {
+        contentType: file.type,
+        cacheControl: 'public, max-age=31536000, immutable',
+      },
+      customMetadata: { kind: 'comment-sticker', name, category },
+    });
+
+    const run = await env.DB.prepare(`INSERT INTO sticker_library(code,name,category,r2_key,public_url,mime_type,size_bytes,is_active,sort_order)
+      VALUES(?,?,?,?,?,?,?,1,0)`).bind(code, name, category, key, publicUrl, file.type, file.size).run();
+    const id = Number(run.meta?.last_row_id || run.meta?.lastRowId || 0);
+    const row = id ? await env.DB.prepare('SELECT * FROM sticker_library WHERE id=?').bind(id).first() : null;
+    return json({ ok: true, sticker: row ? stickerOut(row) : { id, code, name, category, url: publicUrl, mimeType: file.type, sizeBytes: file.size, active: true, sortOrder: 0 } }, 201);
+  } catch (error) {
+    try { await env.MEDIA.delete(key); } catch {}
+    console.error('AINFO sticker upload failed', error);
+    return json({ error: 'sticker_upload_failed', message: 'Stiker gagal disimpan.' }, 500);
+  }
+}
+
+async function updateSticker(req, env, ctx, id) {
+  if (!(await adminAllowed(req, env, ctx))) return json({ error: 'forbidden' }, 403);
+  if (!csrfOk(req)) return json({ error: 'csrf_failed' }, 403);
+  const body = await req.json().catch(() => ({}));
+  const active = body.active === false || body.active === 0 ? 0 : 1;
+  const sortOrder = Number.isFinite(Number(body.sortOrder)) ? Math.max(-9999, Math.min(9999, Number(body.sortOrder))) : 0;
+  const name = String(body.name || '').trim().slice(0, 80);
+  const category = String(body.category || '').trim().slice(0, 60);
+  const row = await env.DB.prepare('SELECT * FROM sticker_library WHERE id=?').bind(id).first();
+  if (!row) return json({ error: 'sticker_not_found' }, 404);
+  await env.DB.prepare(`UPDATE sticker_library SET name=?,category=?,is_active=?,sort_order=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`)
+    .bind(name || row.name, category || row.category, active, sortOrder, id).run();
+  const updated = await env.DB.prepare('SELECT * FROM sticker_library WHERE id=?').bind(id).first();
+  return json({ ok: true, sticker: stickerOut(updated) });
+}
+
+async function deleteSticker(req, env, ctx, id) {
+  if (!(await adminAllowed(req, env, ctx))) return json({ error: 'forbidden' }, 403);
+  if (!csrfOk(req)) return json({ error: 'csrf_failed' }, 403);
+  const row = await env.DB.prepare('SELECT id,r2_key FROM sticker_library WHERE id=?').bind(id).first();
+  if (!row) return json({ error: 'sticker_not_found' }, 404);
+  try { await env.MEDIA.delete(String(row.r2_key || '')); } catch {}
+  await env.DB.prepare('DELETE FROM sticker_library WHERE id=?').bind(id).run();
+  return json({ ok: true, id });
 }
 
 async function publishFromNewsroom(req, env) {
@@ -217,6 +362,14 @@ async function route(req, env, ctx) {
     if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405, { Allow: 'POST' });
     return publishFromNewsroom(req, env);
   }
+
+  if (path === '/api/public/stickers' && req.method === 'GET') return publicStickers(env);
+  if (path === '/api/admin/stickers' && req.method === 'GET') return adminStickers(req, env, ctx);
+  if (path === '/api/admin/stickers' && req.method === 'POST') return uploadSticker(req, env, ctx);
+
+  const stickerMatch = path.match(/^\/api\/admin\/stickers\/(\d+)$/);
+  if (stickerMatch && req.method === 'PATCH') return updateSticker(req, env, ctx, Number(stickerMatch[1]));
+  if (stickerMatch && req.method === 'DELETE') return deleteSticker(req, env, ctx, Number(stickerMatch[1]));
 
   return previous.fetch(req, env, ctx);
 }
