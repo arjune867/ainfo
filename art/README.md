@@ -31,6 +31,8 @@ Source production candidate sudah disiapkan di branch `feature/ainfo-art-newsroo
 
 Yang perlu Anda lakukan sendiri adalah konfigurasi account-level Cloudflare, secrets, Access, domain, dan publish endpoint. Lihat `SETUP-PRODUCTION.md`.
 
+> Catatan: branch ini belum di-merge dan CI Cloudflare/GitHub belum dapat dianggap lolos sampai Anda memasukkan GitHub Actions secrets lalu menjalankan workflow. PR sengaja tetap Draft agar portal utama tidak berubah sebelum validasi tersebut selesai.
+
 ## Architecture
 
 - Frontend: React + Vite PWA
@@ -69,13 +71,14 @@ Baca langkah lengkap:
 Ringkasnya:
 
 1. isi GitHub Actions secrets `CLOUDFLARE_API_TOKEN` dan `CLOUDFLARE_ACCOUNT_ID`
-2. merge PR ke `main`
-3. biarkan workflow apply migration + deploy Worker
-4. isi Worker secrets untuk AI dan publishing
-5. aktifkan Cloudflare Access untuk `art.ainfo.web.id`
-6. pasang custom domain `art.ainfo.web.id`
-7. siapkan endpoint publish private di portal AINFO
-8. lakukan full end-to-end test
+2. jalankan validation/build pada PR
+3. setelah build lolos, merge PR ke `main`
+4. biarkan workflow apply migration + deploy Worker
+5. isi Worker secrets untuk AI dan publishing
+6. aktifkan Cloudflare Access untuk `art.ainfo.web.id`
+7. pasang custom domain `art.ainfo.web.id`
+8. siapkan endpoint publish private di portal AINFO
+9. lakukan full end-to-end test
 
 ## Security
 
