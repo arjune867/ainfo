@@ -38,7 +38,6 @@ const normalizePublishUrl = (env: Env) => {
   if (!configured) return fallback;
   try {
     const url = new URL(configured);
-    // Production apex is already verified. Avoid a broken www record blocking newsroom publishing.
     if (url.hostname.toLowerCase() === 'www.ainfo.web.id') url.hostname = 'ainfo.web.id';
     if (!url.pathname || url.pathname === '/') url.pathname = '/api/internal/publish';
     return url.toString();
@@ -114,7 +113,6 @@ const publishHealth = async (request: Request, env: Env) => {
       body: '{}',
     });
     const text = await response.text();
-    // A valid token reaches the portal and an empty payload is intentionally rejected as title_required (400).
     const tokenAccepted = response.status === 400 && /title_required/i.test(text);
     return json({
       ok: tokenAccepted,
@@ -128,7 +126,7 @@ const publishHealth = async (request: Request, env: Env) => {
 };
 
 export default {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
     const method = request.method.toUpperCase();
@@ -141,7 +139,6 @@ export default {
       return publishHealth(request, env);
     }
 
-    // Admins can publish directly from Publish Center. The server performs the approval atomically before forwarding.
     const publishMatch = path.match(/^\/api\/articles\/(\d+)\/publish$/);
     if (publishMatch && method === 'POST') {
       const member = await getActiveMember(request, env);
@@ -149,10 +146,10 @@ export default {
         await env.DB.prepare("UPDATE art_articles SET status='APPROVED',updated_at=CURRENT_TIMESTAMP WHERE id=? AND owner_user_id=? AND status<>'PUBLISHED'")
           .bind(Number(publishMatch[1]), member.user_id).run();
       }
-      return previous.fetch(request, runtimeEnv(env) as any, ctx as any);
+      return previous.fetch(request, runtimeEnv(env) as any);
     }
 
-    return previous.fetch(request, runtimeEnv(env) as any, ctx as any);
+    return previous.fetch(request, runtimeEnv(env) as any);
   },
 
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
