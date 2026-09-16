@@ -1,4 +1,4 @@
-const CACHE='ainfo-admin-v13';
+const CACHE='ainfo-admin-v14-2';
 const ASSETS=['./','./index.html','./manifest.webmanifest','../AINFO.png','../icon-192.png'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('ainfo-admin-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
