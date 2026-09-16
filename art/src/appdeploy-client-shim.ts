@@ -50,7 +50,7 @@ export const auth = {
       throw error;
     }
   },
-  async signIn(): Promise<{ user: AuthUser }> {
+  async signIn(_options?: unknown): Promise<{ user: AuthUser }> {
     const current = await auth.getUser();
     if (current) return { user: current };
     const error = new Error('Cloudflare Access authentication required') as Error & { code?: string };
