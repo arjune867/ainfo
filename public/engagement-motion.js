@@ -2,227 +2,71 @@
   'use strict';
 
   const REACTIONS={
-    like:{label:'Suka',src:'/reactions/like.svg'},
-    love:{label:'Love',src:'/reactions/love.svg'},
-    haha:{label:'Haha',src:'/reactions/haha.svg'},
-    wow:{label:'Wow',src:'/reactions/wow.svg'},
-    sad:{label:'Sedih',src:'/reactions/sad.svg'},
-    angry:{label:'Marah',src:'/reactions/angry.svg'}
+    like:{label:'Suka',src:'/reactions/like.svg'},love:{label:'Love',src:'/reactions/love.svg'},haha:{label:'Haha',src:'/reactions/haha.svg'},
+    wow:{label:'Wow',src:'/reactions/wow.svg'},sad:{label:'Sedih',src:'/reactions/sad.svg'},angry:{label:'Marah',src:'/reactions/angry.svg'}
   };
   const STATIC_STICKERS=['💯','✨','🎊','🤝','🙌','🚀','✅','💙','🌟','📢','🔥','👏','🙏','😍','😂','🥳'];
-  let customStickers=[];
-  let customStickerMap=new Map();
-  let stickerRevision=0;
+  const RECENT_KEY='ainfo-whatsapp-picker-recent-v1';
+  const EMOJI_MODULE='https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js';
+  let customStickers=[],customStickerMap=new Map(),stickerRevision=0;
+  let pickerRoot=null,activeTab='emoji',giphyConfig=null,giphyResults=[],giphyBusy=false;
+  let emojiModulePromise=null;
 
   function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+  function safeJson(value,fallback){try{return JSON.parse(value)}catch{return fallback}}
+  function recent(){const list=safeJson(localStorage.getItem(RECENT_KEY)||'[]',[]);return Array.isArray(list)?list.slice(0,30):[]}
+  function pushRecent(item){const list=recent().filter(x=>!(x.type===item.type&&x.value===item.value));list.unshift(item);localStorage.setItem(RECENT_KEY,JSON.stringify(list.slice(0,30)))}
+  function insertIntoComment(text){const el=document.getElementById('commentText');if(!el)return;const start=el.selectionStart??el.value.length,end=el.selectionEnd??start;el.value=el.value.slice(0,start)+text+el.value.slice(end);el.focus();const pos=start+text.length;try{el.setSelectionRange(pos,pos)}catch{}el.dispatchEvent(new Event('input',{bubbles:true}))}
 
   function addStyles(){
     if(document.getElementById('ainfo-motion-engagement-style'))return;
-    const style=document.createElement('style');
-    style.id='ainfo-motion-engagement-style';
-    style.textContent=`
-      .reaction-picker{align-items:center!important;animation:ainfoReactionPop .16s ease-out}
-      .reaction-choice{width:46px!important;height:46px!important;padding:2px!important;overflow:visible!important}
-      .reaction-choice .ainfo-reaction-img,.comment-reaction-picker .ainfo-reaction-img{width:40px;height:40px;object-fit:contain;display:block;pointer-events:none;filter:drop-shadow(0 3px 5px rgba(15,23,42,.12))}
-      .reaction-choice:hover .ainfo-reaction-img,.comment-reaction-picker button:hover .ainfo-reaction-img{transform:translateY(-3px) scale(1.13)}
-      .reaction-choice.selected .ainfo-reaction-img{transform:scale(1.08)}
-      .comment-reaction-picker button{width:42px!important;height:42px!important;padding:1px!important;display:grid!important;place-items:center!important}
-      .comment-reaction-picker .ainfo-reaction-img{width:36px;height:36px}
-      [data-reaction-main] .ainfo-main-reaction{width:22px;height:22px;object-fit:contain;display:block;filter:drop-shadow(0 2px 3px rgba(15,23,42,.12))}
-      [data-reaction-main].active .ainfo-main-reaction{animation:ainfoMainPulse 1.25s ease-in-out infinite}
-      .sticker-panel.ainfo-motion-stickers{grid-template-columns:repeat(4,56px)!important;gap:7px!important;width:min(284px,calc(100vw - 34px));max-height:360px;overflow:auto;padding:10px!important;border-radius:16px!important;box-shadow:0 18px 46px rgba(15,23,42,.18)!important}
-      .sticker-panel.ainfo-motion-stickers .ainfo-sticker-title{grid-column:1/-1;font-size:10px;font-weight:900;color:#64748b;letter-spacing:.45px;text-transform:uppercase;padding:1px 2px 3px}
-      .sticker-panel.ainfo-motion-stickers .ainfo-sticker-gif{width:56px!important;height:56px!important;padding:3px!important;border-radius:14px!important;background:#f8fafc!important;border:1px solid #edf1f6!important;display:grid!important;place-items:center!important;overflow:hidden}
-      .sticker-panel.ainfo-motion-stickers .ainfo-sticker-gif:hover{background:#eef6ff!important;border-color:#bfd8ff!important;transform:translateY(-2px)}
-      .sticker-panel.ainfo-motion-stickers .ainfo-sticker-gif img{width:48px;height:48px;object-fit:contain;pointer-events:none}
-      .sticker-panel.ainfo-motion-stickers .ainfo-sticker-static{font-size:24px!important}
-      .ainfo-sticker-preview{margin:10px 0 2px 47px;display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid #dbeafe;background:#f8fbff;border-radius:14px;width:max-content;max-width:calc(100% - 47px)}
-      .ainfo-sticker-preview img{width:68px;height:68px;object-fit:contain}
-      .ainfo-sticker-preview button{width:28px;height:28px;border:0;border-radius:50%;background:#fff;color:#64748b;box-shadow:0 1px 5px rgba(15,23,42,.12);font-weight:900}
-      .comment-sticker.ainfo-animated-sticker{font-size:0!important;line-height:0!important;margin:8px 0!important}
-      .comment-sticker.ainfo-animated-sticker img{width:110px;height:110px;object-fit:contain;display:block;border-radius:18px}
-      @keyframes ainfoReactionPop{from{opacity:0;transform:translateY(5px) scale(.96)}to{opacity:1;transform:none}}
-      @keyframes ainfoMainPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.13)}}
-      @media(max-width:480px){
-        .reaction-picker{left:50%!important;transform:translateX(-18%)!important}
-        .reaction-choice{width:43px!important;height:43px!important}
-        .reaction-choice .ainfo-reaction-img{width:38px;height:38px}
-        .sticker-panel.ainfo-motion-stickers{grid-template-columns:repeat(4,52px)!important;width:244px}
-        .sticker-panel.ainfo-motion-stickers .ainfo-sticker-gif{width:52px!important;height:52px!important}
-        .sticker-panel.ainfo-motion-stickers .ainfo-sticker-gif img{width:45px;height:45px}
-        .comment-sticker.ainfo-animated-sticker img{width:96px;height:96px}
-      }
-    `;
-    document.head.appendChild(style);
+    const style=document.createElement('style');style.id='ainfo-motion-engagement-style';style.textContent=`
+      .reaction-picker{align-items:center!important;animation:ainfoReactionPop .16s ease-out}.reaction-choice{width:46px!important;height:46px!important;padding:2px!important;overflow:visible!important}.reaction-choice .ainfo-reaction-img,.comment-reaction-picker .ainfo-reaction-img{width:40px;height:40px;object-fit:contain;display:block;pointer-events:none;filter:drop-shadow(0 3px 5px rgba(15,23,42,.12))}.reaction-choice:hover .ainfo-reaction-img,.comment-reaction-picker button:hover .ainfo-reaction-img{transform:translateY(-3px) scale(1.13)}.reaction-choice.selected .ainfo-reaction-img{transform:scale(1.08)}.comment-reaction-picker button{width:42px!important;height:42px!important;padding:1px!important;display:grid!important;place-items:center!important}.comment-reaction-picker .ainfo-reaction-img{width:36px;height:36px}[data-reaction-main] .ainfo-main-reaction{width:22px;height:22px;object-fit:contain;display:block;filter:drop-shadow(0 2px 3px rgba(15,23,42,.12))}[data-reaction-main].active .ainfo-main-reaction{animation:ainfoMainPulse 1.25s ease-in-out infinite}
+      .ainfo-sticker-preview{margin:10px 0 2px 47px;display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid #dbeafe;background:#f8fbff;border-radius:14px;width:max-content;max-width:calc(100% - 47px)}.ainfo-sticker-preview img{width:68px;height:68px;object-fit:contain}.ainfo-sticker-preview button{width:28px;height:28px;border:0;border-radius:50%;background:#fff;color:#64748b;box-shadow:0 1px 5px rgba(15,23,42,.12);font-weight:900}.comment-sticker.ainfo-animated-sticker{font-size:0!important;line-height:0!important;margin:8px 0!important}.comment-sticker.ainfo-animated-sticker img{width:118px;height:118px;object-fit:contain;display:block;border-radius:18px}
+      .ainfo-wa-backdrop{position:fixed;inset:0;background:rgba(2,12,27,.38);z-index:9998;opacity:0;pointer-events:none;transition:.18s}.ainfo-wa-backdrop.open{opacity:1;pointer-events:auto}.ainfo-wa-picker{position:fixed;right:20px;bottom:20px;width:min(390px,calc(100vw - 24px));height:min(570px,calc(100vh - 34px));background:#fff;border:1px solid #dfe7f0;border-radius:22px;box-shadow:0 28px 90px rgba(15,23,42,.28);z-index:9999;display:none;overflow:hidden}.ainfo-wa-picker.open{display:flex;flex-direction:column;animation:ainfoPickerIn .18s ease-out}.ainfo-wa-head{display:flex;align-items:center;gap:8px;padding:11px 12px;border-bottom:1px solid #edf1f5;background:#fff}.ainfo-wa-head b{font-size:13px}.ainfo-wa-head span{font-size:9px;color:#7a899a}.ainfo-wa-close{margin-left:auto;width:32px;height:32px;border:0;border-radius:50%;background:#f3f6f9;color:#475569;font-size:18px}.ainfo-wa-tabs{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid #edf1f5;background:#fbfdff}.ainfo-wa-tab{border:0;background:transparent;padding:10px 4px;font-size:10px;font-weight:900;color:#6b778c;display:flex;gap:5px;align-items:center;justify-content:center}.ainfo-wa-tab.active{color:#0b5ed7;box-shadow:inset 0 -2px 0 #0b5ed7;background:#f6faff}.ainfo-wa-body{flex:1;min-height:0;overflow:hidden;position:relative}.ainfo-wa-pane{position:absolute;inset:0;display:none;overflow:auto;padding:10px}.ainfo-wa-pane.active{display:block}.ainfo-wa-search{position:sticky;top:-10px;z-index:2;background:#fff;padding:0 0 8px}.ainfo-wa-search input{width:100%;height:38px;border:1px solid #dce5ef;border-radius:12px;padding:0 12px;font-size:11px;outline:none}.ainfo-wa-search input:focus{border-color:#8ebcff;box-shadow:0 0 0 3px #edf5ff}.ainfo-wa-sticker-grid,.ainfo-wa-recent-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.ainfo-wa-sticker{border:1px solid #edf1f5;background:#f8fafc;border-radius:14px;min-height:72px;padding:5px;display:grid;place-items:center;position:relative}.ainfo-wa-sticker:hover{background:#eef6ff;border-color:#bfd8ff}.ainfo-wa-sticker img{width:62px;height:62px;object-fit:contain}.ainfo-wa-sticker .emoji-big{font-size:34px}.ainfo-wa-label{grid-column:1/-1;font-size:9px;color:#64748b;font-weight:900;margin:3px 2px 0}.ainfo-wa-empty{border:1px dashed #cbd5e1;border-radius:14px;padding:28px 14px;text-align:center;color:#718096;font-size:10px;line-height:1.55}.ainfo-wa-gif-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.ainfo-wa-gif{border:0;background:#f1f5f9;border-radius:12px;overflow:hidden;padding:0;min-height:110px}.ainfo-wa-gif img{width:100%;height:130px;object-fit:cover}.ainfo-giphy-credit{text-align:center;font-size:9px;font-weight:900;color:#596579;padding:8px 0}.ainfo-wa-recent-item{border:1px solid #edf1f5;background:#fff;border-radius:14px;height:78px;display:grid;place-items:center;padding:5px}.ainfo-wa-recent-item img{width:64px;height:64px;object-fit:contain}.ainfo-wa-recent-item span{font-size:32px}.ainfo-wa-emoji-host{height:100%;min-height:0}.ainfo-wa-emoji-host emoji-picker{width:100%;height:100%;--border-radius:14px;--border-size:0;--category-emoji-size:1.35rem;--emoji-size:1.7rem;--input-border-radius:12px;--input-font-size:13px;--indicator-color:#0b5ed7}
+      @keyframes ainfoReactionPop{from{opacity:0;transform:translateY(5px) scale(.96)}to{opacity:1;transform:none}}@keyframes ainfoMainPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.13)}}@keyframes ainfoPickerIn{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
+      @media(max-width:600px){.ainfo-wa-picker{left:0;right:0;bottom:0;width:100%;height:min(74vh,620px);border-radius:22px 22px 0 0}.ainfo-wa-sticker-grid,.ainfo-wa-recent-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.ainfo-wa-gif-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.comment-sticker.ainfo-animated-sticker img{width:104px;height:104px}}
+    `;document.head.appendChild(style);
   }
 
-  function reactionKey(button){
-    const own=button.dataset.ainfoReactionKey;
-    if(own&&REACTIONS[own])return own;
-    const raw=button.getAttribute('onclick')||'';
-    const match=raw.match(/['\"](like|love|haha|wow|sad|angry|care)['\"]/i);
-    if(match)return match[1].toLowerCase();
-    const title=(button.getAttribute('title')||button.getAttribute('aria-label')||'').toLowerCase();
-    if(/suka|like/.test(title))return 'like';
-    if(/love|cinta/.test(title))return 'love';
-    if(/haha|tertawa/.test(title))return 'haha';
-    if(/wow|kaget/.test(title))return 'wow';
-    if(/sedih|sad/.test(title))return 'sad';
-    if(/marah|angry/.test(title))return 'angry';
-    if(/peduli|care/.test(title))return 'care';
-    return '';
-  }
+  function reactionKey(button){const own=button.dataset.ainfoReactionKey;if(own&&REACTIONS[own])return own;const raw=button.getAttribute('onclick')||'';const m=raw.match(/['\"](like|love|haha|wow|sad|angry|care)['\"]/i);if(m)return m[1].toLowerCase();const title=(button.getAttribute('title')||button.getAttribute('aria-label')||'').toLowerCase();if(/suka|like/.test(title))return'like';if(/love|cinta/.test(title))return'love';if(/haha|tertawa/.test(title))return'haha';if(/wow|kaget/.test(title))return'wow';if(/sedih|sad/.test(title))return'sad';if(/marah|angry/.test(title))return'angry';if(/peduli|care/.test(title))return'care';return''}
+  function imageHtml(key,cls='ainfo-reaction-img'){const item=REACTIONS[key];return item?`<img class="${cls}" src="${item.src}" alt="${item.label}" draggable="false">`:''}
+  function customImageHtml(item,cls='ainfo-reaction-img'){return item?`<img class="${cls}" src="${esc(item.url)}" alt="${esc(item.name)}" draggable="false" loading="lazy">`:''}
 
-  function imageHtml(key,cls='ainfo-reaction-img'){
-    const item=REACTIONS[key];
-    return item?`<img class="${cls}" src="${item.src}" alt="${item.label}" draggable="false">`:'';
-  }
+  async function loadCustomStickers(){try{const r=await fetch('/api/public/stickers',{cache:'no-store',credentials:'same-origin'});const d=await r.json().catch(()=>({}));if(!r.ok||!Array.isArray(d.stickers))return;customStickers=d.stickers.filter(x=>x&&x.active!==false&&x.code&&x.url).slice(0,300);customStickerMap=new Map(customStickers.map(x=>[String(x.code),x]));stickerRevision++;renderStickerTab()}catch(e){console.warn('AINFO custom stickers unavailable',e)}}
 
-  function customImageHtml(item,cls='ainfo-reaction-img'){
-    return item?`<img class="${cls}" src="${esc(item.url)}" alt="${esc(item.name)}" draggable="false" loading="lazy">`:'';
-  }
+  function enhanceReactionChoices(){document.querySelectorAll('.reaction-picker .reaction-choice,.comment-reaction-picker button').forEach(button=>{const key=reactionKey(button);if(key==='care'){button.remove();return}if(!REACTIONS[key])return;button.dataset.ainfoReactionKey=key;if(button.dataset.ainfoAnimated==='1')return;button.dataset.ainfoAnimated='1';button.title=REACTIONS[key].label;button.setAttribute('aria-label',REACTIONS[key].label);button.innerHTML=imageHtml(key)})}
+  function enhanceMainReactionButtons(){document.querySelectorAll('.reaction-wrap').forEach(wrap=>{const main=wrap.querySelector('[data-reaction-main]');if(!main)return;const selected=wrap.querySelector('.reaction-choice.selected');const key=selected?reactionKey(selected):'';const old=main.querySelector('.ainfo-main-reaction');const bi=main.querySelector('i.bi');if(key&&REACTIONS[key]){if(bi)bi.style.display='none';if(!old||old.dataset.key!==key){old?.remove();const img=document.createElement('img');img.className='ainfo-main-reaction';img.src=REACTIONS[key].src;img.alt=REACTIONS[key].label;img.dataset.key=key;main.insertBefore(img,main.firstChild)}const label=main.querySelector('.tool-label');if(label)label.textContent=REACTIONS[key].label}else{old?.remove();if(bi)bi.style.display='';const label=main.querySelector('.tool-label');if(label)label.textContent='Reaction'}})}
 
-  async function loadCustomStickers(){
-    try{
-      const r=await fetch('/api/public/stickers',{cache:'no-store',credentials:'same-origin'});
-      const d=await r.json().catch(()=>({}));
-      if(!r.ok||!Array.isArray(d.stickers))return;
-      customStickers=d.stickers.filter(x=>x&&x.active!==false&&x.code&&x.url).slice(0,300);
-      customStickerMap=new Map(customStickers.map(x=>[String(x.code),x]));
-      stickerRevision++;
-      document.querySelectorAll('.sticker-panel').forEach(x=>delete x.dataset.ainfoMotionRevision);
-      requestEnhance();
-    }catch(e){console.warn('AINFO custom stickers unavailable',e)}
-  }
+  function showStickerPreview(token,label='',url=''){const composer=document.querySelector('.comment-composer');if(!composer)return;let preview=composer.querySelector('.ainfo-sticker-preview');if(!preview){preview=document.createElement('div');preview.className='ainfo-sticker-preview';const tools=composer.querySelector('.comment-compose-tools');composer.insertBefore(preview,tools||null)}let body='';const reaction=String(token||'').match(/^sticker:(like|love|haha|wow|sad|angry)$/i);const custom=String(token||'').match(/^custom:([a-z0-9-]+)$/i);const gif=String(token||'').match(/^gif:(.+)$/i);if(reaction){const key=reaction[1].toLowerCase();body=`${imageHtml(key,'ainfo-sticker-preview-img')}<div style="font-size:11px;font-weight:900;color:#334155">Stiker ${REACTIONS[key].label}</div>`}else if(custom&&customStickerMap.has(custom[1])){const item=customStickerMap.get(custom[1]);body=`${customImageHtml(item,'ainfo-sticker-preview-img')}<div style="font-size:11px;font-weight:900;color:#334155">${esc(item.name)}</div>`}else if(gif&&url){body=`<img src="${esc(url)}" alt="GIF"><div style="font-size:11px;font-weight:900;color:#334155">${esc(label||'GIF')}</div>`}else{body=`<div style="font-size:28px">${esc(token)}</div><div style="font-size:11px;font-weight:900;color:#334155">Stiker cepat</div>`}preview.innerHTML=`${body}<button type="button" aria-label="Hapus">×</button>`;preview.querySelector('button')?.addEventListener('click',()=>{try{if(typeof window.chooseCommentSticker==='function')window.chooseCommentSticker('')}catch{}preview.remove()})}
 
-  function enhanceReactionChoices(){
-    document.querySelectorAll('.reaction-picker .reaction-choice,.comment-reaction-picker button').forEach(button=>{
-      const key=reactionKey(button);
-      if(key==='care'){
-        button.remove();
-        return;
-      }
-      if(!REACTIONS[key])return;
-      button.dataset.ainfoReactionKey=key;
-      if(button.dataset.ainfoAnimated==='1')return;
-      button.dataset.ainfoAnimated='1';
-      button.title=REACTIONS[key].label;
-      button.setAttribute('aria-label',REACTIONS[key].label);
-      button.innerHTML=imageHtml(key);
-    });
-  }
+  function chooseSticker(token,item){if(typeof window.chooseCommentSticker==='function')window.chooseCommentSticker(token);if(item?.type==='gif')showStickerPreview(token,item.label,item.url);else showStickerPreview(token);pushRecent({type:item?.type||'sticker',value:token,label:item?.label||'',url:item?.url||''});closePicker()}
 
-  function enhanceMainReactionButtons(){
-    document.querySelectorAll('.reaction-wrap').forEach(wrap=>{
-      const main=wrap.querySelector('[data-reaction-main]');
-      if(!main)return;
-      const selected=wrap.querySelector('.reaction-choice.selected');
-      const key=selected?reactionKey(selected):'';
-      const old=main.querySelector('.ainfo-main-reaction');
-      const bootstrapIcon=main.querySelector('i.bi');
-      if(key&&REACTIONS[key]){
-        if(bootstrapIcon)bootstrapIcon.style.display='none';
-        if(!old||old.dataset.key!==key){
-          old?.remove();
-          const img=document.createElement('img');
-          img.className='ainfo-main-reaction';img.src=REACTIONS[key].src;img.alt=REACTIONS[key].label;img.dataset.key=key;
-          main.insertBefore(img,main.firstChild);
-        }
-        const label=main.querySelector('.tool-label');if(label)label.textContent=REACTIONS[key].label;
-      }else{
-        old?.remove();
-        if(bootstrapIcon)bootstrapIcon.style.display='';
-        const label=main.querySelector('.tool-label');if(label)label.textContent='Reaction';
-      }
-    });
-  }
+  function renderAnimatedCommentStickers(){document.querySelectorAll('.comment-sticker').forEach(box=>{const raw=(box.dataset.ainfoStickerToken||box.textContent||'').trim();if(!raw)return;const reaction=raw.match(/^sticker:(like|love|haha|wow|sad|angry)$/i);if(reaction){const key=reaction[1].toLowerCase();box.dataset.ainfoStickerToken=raw;box.classList.add('ainfo-animated-sticker');box.innerHTML=`<img src="${REACTIONS[key].src}" alt="Stiker ${REACTIONS[key].label}" data-key="${key}" loading="lazy">`;return}const custom=raw.match(/^custom:([a-z0-9-]+)$/i);if(custom&&customStickerMap.has(custom[1])){const item=customStickerMap.get(custom[1]);box.dataset.ainfoStickerToken=raw;box.classList.add('ainfo-animated-sticker');box.innerHTML=`<img src="${esc(item.url)}" alt="${esc(item.name)}" data-code="${esc(custom[1])}" loading="lazy">`;return}const gif=raw.match(/^gif:(.+)$/i);if(gif){let url='';try{url=decodeURIComponent(gif[1])}catch{url=gif[1]}if(/^https:\/\//i.test(url)){box.dataset.ainfoStickerToken=raw;box.classList.add('ainfo-animated-sticker');box.innerHTML=`<img src="${esc(url)}" alt="GIF" loading="lazy">`}}})}
 
-  function showStickerPreview(token){
-    const composer=document.querySelector('.comment-composer');
-    if(!composer)return;
-    let preview=composer.querySelector('.ainfo-sticker-preview');
-    if(!preview){
-      preview=document.createElement('div');preview.className='ainfo-sticker-preview';
-      const tools=composer.querySelector('.comment-compose-tools');
-      composer.insertBefore(preview,tools||null);
-    }
-    let body='';
-    const reaction=String(token||'').match(/^sticker:(like|love|haha|wow|sad|angry)$/i);
-    const custom=String(token||'').match(/^custom:([a-z0-9-]+)$/i);
-    if(reaction){
-      const key=reaction[1].toLowerCase();body=`${imageHtml(key,'ainfo-sticker-preview-img')}<div style="font-size:11px;font-weight:900;color:#334155">Stiker ${REACTIONS[key].label}</div>`;
-    }else if(custom&&customStickerMap.has(custom[1])){
-      const item=customStickerMap.get(custom[1]);body=`${customImageHtml(item,'ainfo-sticker-preview-img')}<div style="font-size:11px;font-weight:900;color:#334155">${esc(item.name)}</div>`;
-    }else{
-      body=`<div style="font-size:28px">${esc(token)}</div><div style="font-size:11px;font-weight:900;color:#334155">Stiker cepat</div>`;
-    }
-    preview.innerHTML=`${body}<button type="button" aria-label="Hapus stiker">×</button>`;
-    preview.querySelector('button')?.addEventListener('click',()=>{
-      try{if(typeof window.chooseCommentSticker==='function')window.chooseCommentSticker('')}catch{}
-      preview.remove();
-    });
-  }
+  function ensurePicker(){if(pickerRoot)return pickerRoot;addStyles();const backdrop=document.createElement('div');backdrop.className='ainfo-wa-backdrop';backdrop.addEventListener('click',closePicker);document.body.appendChild(backdrop);const root=document.createElement('div');root.className='ainfo-wa-picker';root.innerHTML=`<div class="ainfo-wa-head"><div><b>Emoji & Stiker</b><span>Gaya WhatsApp</span></div><button class="ainfo-wa-close" type="button" aria-label="Tutup">×</button></div><div class="ainfo-wa-tabs"><button class="ainfo-wa-tab" data-tab="emoji">😊 Emoji</button><button class="ainfo-wa-tab" data-tab="sticker">🎨 Stiker</button><button class="ainfo-wa-tab" data-tab="gif">GIF</button><button class="ainfo-wa-tab" data-tab="recent">🕘 Recent</button></div><div class="ainfo-wa-body"><div class="ainfo-wa-pane" data-pane="emoji"><div class="ainfo-wa-emoji-host" id="ainfoEmojiHost"><div class="ainfo-wa-empty">Memuat emoji lengkap…</div></div></div><div class="ainfo-wa-pane" data-pane="sticker"><div class="ainfo-wa-search"><input id="ainfoStickerSearch" placeholder="Cari stiker…"></div><div id="ainfoStickerGrid"></div></div><div class="ainfo-wa-pane" data-pane="gif"><div class="ainfo-wa-search"><input id="ainfoGifSearch" placeholder="Cari GIF di GIPHY…" maxlength="50"></div><div id="ainfoGifGrid"></div><div class="ainfo-giphy-credit">Powered by GIPHY</div></div><div class="ainfo-wa-pane" data-pane="recent"><div id="ainfoRecentGrid"></div></div></div>`;document.body.appendChild(root);pickerRoot=root;root.querySelector('.ainfo-wa-close').addEventListener('click',closePicker);root.querySelectorAll('.ainfo-wa-tab').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));root.querySelector('#ainfoStickerSearch').addEventListener('input',e=>renderStickerTab(e.target.value));let gifTimer;root.querySelector('#ainfoGifSearch').addEventListener('input',e=>{clearTimeout(gifTimer);gifTimer=setTimeout(()=>loadGifs(e.target.value.trim()),350)});setTab('emoji');return root}
 
-  function buildStickerPanel(){
-    document.querySelectorAll('.sticker-panel').forEach(panel=>{
-      const rev=String(stickerRevision);
-      if(panel.dataset.ainfoMotionRevision===rev)return;
-      panel.dataset.ainfoMotionRevision=rev;
-      panel.classList.add('ainfo-motion-stickers');
-      panel.innerHTML='';
+  async function ensureEmojiPicker(){const host=document.getElementById('ainfoEmojiHost');if(!host||host.querySelector('emoji-picker'))return;if(!emojiModulePromise)emojiModulePromise=import(EMOJI_MODULE).catch(e=>{emojiModulePromise=null;throw e});try{await emojiModulePromise;await customElements.whenDefined('emoji-picker');host.innerHTML='';const picker=document.createElement('emoji-picker');picker.setAttribute('locale','id');picker.setAttribute('skin-tone-emoji','👍');picker.addEventListener('emoji-click',e=>{const unicode=e.detail?.unicode||e.detail?.emoji?.unicode||'';if(!unicode)return;insertIntoComment(unicode);pushRecent({type:'emoji',value:unicode,label:e.detail?.emoji?.annotation||'Emoji'});renderRecent();closePicker()});host.appendChild(picker)}catch(e){host.innerHTML='<div class="ainfo-wa-empty">Emoji picker gagal dimuat. Periksa koneksi internet lalu coba lagi.</div>';console.warn('Emoji picker load failed',e)}}
 
-      const title=document.createElement('div');title.className='ainfo-sticker-title';title.textContent='Stiker reaction';panel.appendChild(title);
-      Object.entries(REACTIONS).forEach(([key,item])=>{
-        const button=document.createElement('button');button.type='button';button.className='ainfo-sticker-gif';button.title=`Stiker ${item.label}`;button.setAttribute('aria-label',`Stiker ${item.label}`);button.innerHTML=imageHtml(key);
-        button.addEventListener('click',()=>{const token=`sticker:${key}`;if(typeof window.chooseCommentSticker==='function')window.chooseCommentSticker(token);showStickerPreview(token);panel.classList.remove('open')});panel.appendChild(button);
-      });
+  function stickerItems(query=''){const q=String(query||'').toLowerCase().trim();const items=[];Object.entries(REACTIONS).forEach(([key,x])=>items.push({kind:'reaction',token:`sticker:${key}`,name:x.label,category:'Reaction',url:x.src}));customStickers.forEach(x=>items.push({kind:'custom',token:`custom:${x.code}`,name:x.name||'Stiker',category:x.category||'Karakter',url:x.url}));STATIC_STICKERS.forEach(x=>items.push({kind:'emoji',token:x,name:'Stiker cepat',category:'Cepat',emoji:x}));return q?items.filter(x=>(x.name+' '+x.category).toLowerCase().includes(q)):items}
+  function renderStickerTab(query=''){const box=document.getElementById('ainfoStickerGrid');if(!box)return;const items=stickerItems(query);if(!items.length){box.innerHTML='<div class="ainfo-wa-empty">Stiker tidak ditemukan.</div>';return}const groups=new Map();items.forEach(x=>{const k=x.category||'Stiker';if(!groups.has(k))groups.set(k,[]);groups.get(k).push(x)});box.innerHTML=[...groups].map(([cat,list])=>`<div class="ainfo-wa-label">${esc(cat)}</div><div class="ainfo-wa-sticker-grid">${list.map((x,i)=>`<button class="ainfo-wa-sticker" type="button" data-sticker-token="${esc(x.token)}" data-group="${esc(cat)}" data-index="${i}">${x.emoji?`<span class="emoji-big">${esc(x.emoji)}</span>`:`<img src="${esc(x.url)}" alt="${esc(x.name)}" loading="lazy">`}</button>`).join('')}</div>`).join('');let groupIndex=0;box.querySelectorAll('.ainfo-wa-sticker-grid').forEach(grid=>{const [cat,list]=[...groups][groupIndex++];grid.querySelectorAll('button').forEach((b,i)=>b.addEventListener('click',()=>{const x=list[i];chooseSticker(x.token,{type:'sticker',label:x.name,url:x.url})}))})}
 
-      if(customStickers.length){
-        const customTitle=document.createElement('div');customTitle.className='ainfo-sticker-title';customTitle.textContent='Stiker karakter';panel.appendChild(customTitle);
-        customStickers.forEach(item=>{
-          const button=document.createElement('button');button.type='button';button.className='ainfo-sticker-gif';button.title=item.name||'Stiker';button.setAttribute('aria-label',item.name||'Stiker');button.innerHTML=customImageHtml(item);
-          button.addEventListener('click',()=>{const token=`custom:${item.code}`;if(typeof window.chooseCommentSticker==='function')window.chooseCommentSticker(token);showStickerPreview(token);panel.classList.remove('open')});panel.appendChild(button);
-        });
-      }
+  async function getGiphyConfig(){if(giphyConfig)return giphyConfig;try{const r=await fetch('/api/public/giphy-config',{cache:'no-store'});giphyConfig=await r.json()}catch{giphyConfig={configured:false}}return giphyConfig}
+  function giphyUrl(obj){return obj?.images?.fixed_width_small?.webp||obj?.images?.fixed_width?.webp||obj?.images?.preview_gif?.url||obj?.images?.original?.webp||obj?.images?.original?.url||''}
+  async function loadGifs(query=''){const box=document.getElementById('ainfoGifGrid');if(!box||giphyBusy)return;const cfg=await getGiphyConfig();if(!cfg?.configured||!cfg.apiKey){box.innerHTML='<div class="ainfo-wa-empty"><b>GIF opsional belum diaktifkan.</b><br>Tambahkan variable <code>GIPHY_API_KEY_PUBLIC</code> pada Worker <b>ainfo</b>. Emoji, stiker, dan Recent tetap berfungsi tanpa GIPHY.</div>';return}giphyBusy=true;box.innerHTML='<div class="ainfo-wa-empty">Memuat GIF…</div>';try{const endpoint=query?'search':'trending';const u=new URL(`https://api.giphy.com/v1/gifs/${endpoint}`);u.searchParams.set('api_key',cfg.apiKey);u.searchParams.set('limit','24');u.searchParams.set('rating',cfg.rating||'pg');u.searchParams.set('bundle','messaging_non_clips');if(query){u.searchParams.set('q',query.slice(0,50));u.searchParams.set('lang',cfg.language||'id')}const r=await fetch(u.toString());const d=await r.json();giphyResults=(d.data||[]).map(x=>({id:x.id,title:x.title||'GIF',url:giphyUrl(x)})).filter(x=>x.url);renderGifGrid()}catch(e){box.innerHTML='<div class="ainfo-wa-empty">GIF gagal dimuat. Coba beberapa saat lagi.</div>';console.warn('GIPHY load failed',e)}finally{giphyBusy=false}}
+  function renderGifGrid(){const box=document.getElementById('ainfoGifGrid');if(!box)return;if(!giphyResults.length){box.innerHTML='<div class="ainfo-wa-empty">GIF tidak ditemukan.</div>';return}box.innerHTML=`<div class="ainfo-wa-gif-grid">${giphyResults.map((x,i)=>`<button class="ainfo-wa-gif" type="button" data-gif-index="${i}" title="${esc(x.title)}"><img src="${esc(x.url)}" alt="${esc(x.title)}" loading="lazy"></button>`).join('')}</div>`;box.querySelectorAll('[data-gif-index]').forEach(b=>b.addEventListener('click',()=>{const x=giphyResults[Number(b.dataset.gifIndex)];if(!x)return;const token='gif:'+encodeURIComponent(x.url);chooseSticker(token,{type:'gif',label:x.title,url:x.url})}))}
 
-      const subtitle=document.createElement('div');subtitle.className='ainfo-sticker-title';subtitle.textContent='Stiker cepat';panel.appendChild(subtitle);
-      STATIC_STICKERS.forEach(sticker=>{
-        const button=document.createElement('button');button.type='button';button.className='ainfo-sticker-static';button.textContent=sticker;button.title='Kirim stiker';
-        button.addEventListener('click',()=>{if(typeof window.chooseCommentSticker==='function')window.chooseCommentSticker(sticker);showStickerPreview(sticker);panel.classList.remove('open')});panel.appendChild(button);
-      });
-    });
-  }
+  function renderRecent(){const box=document.getElementById('ainfoRecentGrid');if(!box)return;const list=recent();if(!list.length){box.innerHTML='<div class="ainfo-wa-empty">Belum ada emoji, stiker, atau GIF yang baru digunakan.</div>';return}box.innerHTML=`<div class="ainfo-wa-recent-grid">${list.map((x,i)=>`<button class="ainfo-wa-recent-item" type="button" data-recent-index="${i}">${x.type==='emoji'?`<span>${esc(x.value)}</span>`:x.url?`<img src="${esc(x.url)}" alt="${esc(x.label||x.type)}" loading="lazy">`:`<span>🎨</span>`}</button>`).join('')}</div>`;box.querySelectorAll('[data-recent-index]').forEach(b=>b.addEventListener('click',()=>{const x=list[Number(b.dataset.recentIndex)];if(!x)return;if(x.type==='emoji'){insertIntoComment(x.value);pushRecent(x);closePicker()}else chooseSticker(x.value,x)}))}
 
-  function renderAnimatedCommentStickers(){
-    document.querySelectorAll('.comment-sticker').forEach(box=>{
-      const raw=(box.dataset.ainfoStickerToken||box.textContent||'').trim();
-      if(!raw)return;
-      const reaction=raw.match(/^sticker:(like|love|haha|wow|sad|angry)$/i);
-      if(reaction){
-        const key=reaction[1].toLowerCase();box.dataset.ainfoStickerToken=raw;box.classList.add('ainfo-animated-sticker');
-        if(!box.querySelector(`img[data-key="${key}"]`))box.innerHTML=`<img src="${REACTIONS[key].src}" alt="Stiker ${REACTIONS[key].label}" data-key="${key}" loading="lazy">`;
-        return;
-      }
-      const custom=raw.match(/^custom:([a-z0-9-]+)$/i);
-      if(custom&&customStickerMap.has(custom[1])){
-        const item=customStickerMap.get(custom[1]);box.dataset.ainfoStickerToken=raw;box.classList.add('ainfo-animated-sticker');
-        if(!box.querySelector(`img[data-code="${custom[1]}"]`))box.innerHTML=`<img src="${esc(item.url)}" alt="${esc(item.name)}" data-code="${esc(custom[1])}" loading="lazy">`;
-      }
-    });
-  }
+  function setTab(tab){activeTab=['emoji','sticker','gif','recent'].includes(tab)?tab:'emoji';if(!pickerRoot)return;pickerRoot.querySelectorAll('.ainfo-wa-tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===activeTab));pickerRoot.querySelectorAll('.ainfo-wa-pane').forEach(x=>x.classList.toggle('active',x.dataset.pane===activeTab));if(activeTab==='emoji')ensureEmojiPicker();if(activeTab==='sticker')renderStickerTab(pickerRoot.querySelector('#ainfoStickerSearch')?.value||'');if(activeTab==='gif'&&!giphyResults.length)loadGifs('');if(activeTab==='recent')renderRecent()}
+  function openPicker(tab='emoji'){ensurePicker();document.querySelector('.ainfo-wa-backdrop')?.classList.add('open');pickerRoot.classList.add('open');setTab(tab);document.querySelectorAll('.emoji-panel,.sticker-panel').forEach(x=>x.classList.remove('open'))}
+  function closePicker(){document.querySelector('.ainfo-wa-backdrop')?.classList.remove('open');pickerRoot?.classList.remove('open')}
 
-  function enhance(){addStyles();enhanceReactionChoices();enhanceMainReactionButtons();buildStickerPanel();renderAnimatedCommentStickers()}
+  function hijackLegacyPicker(){if(window.toggleEmojiPanel&&window.toggleEmojiPanel.__ainfoWhatsApp)return;const fn=function(id){openPicker(id==='stickerPanel'?'sticker':'emoji')};fn.__ainfoWhatsApp=true;window.toggleEmojiPanel=fn}
 
-  let scheduled=false;
-  const requestEnhance=()=>{if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;enhance()})};
-
-  document.addEventListener('click',event=>{
-    const target=event.target instanceof Element?event.target:null;
-    if(target?.closest('.reaction-choice,.comment-reaction-picker button'))setTimeout(requestEnhance,0);
-  },true);
-
-  const observer=new MutationObserver(requestEnhance);
-  observer.observe(document.documentElement,{childList:true,subtree:true});
-  const boot=()=>{enhance();loadCustomStickers()};
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+  function enhance(){addStyles();hijackLegacyPicker();enhanceReactionChoices();enhanceMainReactionButtons();renderAnimatedCommentStickers()}
+  let scheduled=false;const requestEnhance=()=>{if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;enhance()})};
+  document.addEventListener('click',event=>{const target=event.target instanceof Element?event.target:null;if(target?.closest('.reaction-choice,.comment-reaction-picker button'))setTimeout(requestEnhance,0)},true);
+  const observer=new MutationObserver(requestEnhance);observer.observe(document.documentElement,{childList:true,subtree:true});
+  const boot=()=>{enhance();loadCustomStickers();ensurePicker();renderRecent()};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
