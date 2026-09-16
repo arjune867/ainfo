@@ -10,6 +10,11 @@
     angry:{label:'Marah',src:'/reactions/angry.svg'}
   };
   const STATIC_STICKERS=['💯','✨','🎊','🤝','🙌','🚀','✅','💙','🌟','📢','🔥','👏','🙏','😍','😂','🥳'];
+  let customStickers=[];
+  let customStickerMap=new Map();
+  let stickerRevision=0;
+
+  function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 
   function addStyles(){
     if(document.getElementById('ainfo-motion-engagement-style'))return;
@@ -25,9 +30,9 @@
       .comment-reaction-picker .ainfo-reaction-img{width:36px;height:36px}
       [data-reaction-main] .ainfo-main-reaction{width:22px;height:22px;object-fit:contain;display:block;filter:drop-shadow(0 2px 3px rgba(15,23,42,.12))}
       [data-reaction-main].active .ainfo-main-reaction{animation:ainfoMainPulse 1.25s ease-in-out infinite}
-      .sticker-panel.ainfo-motion-stickers{grid-template-columns:repeat(4,56px)!important;gap:7px!important;width:min(284px,calc(100vw - 34px));max-height:330px;overflow:auto;padding:10px!important;border-radius:16px!important;box-shadow:0 18px 46px rgba(15,23,42,.18)!important}
+      .sticker-panel.ainfo-motion-stickers{grid-template-columns:repeat(4,56px)!important;gap:7px!important;width:min(284px,calc(100vw - 34px));max-height:360px;overflow:auto;padding:10px!important;border-radius:16px!important;box-shadow:0 18px 46px rgba(15,23,42,.18)!important}
       .sticker-panel.ainfo-motion-stickers .ainfo-sticker-title{grid-column:1/-1;font-size:10px;font-weight:900;color:#64748b;letter-spacing:.45px;text-transform:uppercase;padding:1px 2px 3px}
-      .sticker-panel.ainfo-motion-stickers .ainfo-sticker-gif{width:56px!important;height:56px!important;padding:3px!important;border-radius:14px!important;background:#f8fafc!important;border:1px solid #edf1f6!important;display:grid!important;place-items:center!important}
+      .sticker-panel.ainfo-motion-stickers .ainfo-sticker-gif{width:56px!important;height:56px!important;padding:3px!important;border-radius:14px!important;background:#f8fafc!important;border:1px solid #edf1f6!important;display:grid!important;place-items:center!important;overflow:hidden}
       .sticker-panel.ainfo-motion-stickers .ainfo-sticker-gif:hover{background:#eef6ff!important;border-color:#bfd8ff!important;transform:translateY(-2px)}
       .sticker-panel.ainfo-motion-stickers .ainfo-sticker-gif img{width:48px;height:48px;object-fit:contain;pointer-events:none}
       .sticker-panel.ainfo-motion-stickers .ainfo-sticker-static{font-size:24px!important}
@@ -35,7 +40,7 @@
       .ainfo-sticker-preview img{width:68px;height:68px;object-fit:contain}
       .ainfo-sticker-preview button{width:28px;height:28px;border:0;border-radius:50%;background:#fff;color:#64748b;box-shadow:0 1px 5px rgba(15,23,42,.12);font-weight:900}
       .comment-sticker.ainfo-animated-sticker{font-size:0!important;line-height:0!important;margin:8px 0!important}
-      .comment-sticker.ainfo-animated-sticker img{width:96px;height:96px;object-fit:contain;display:block;border-radius:18px}
+      .comment-sticker.ainfo-animated-sticker img{width:110px;height:110px;object-fit:contain;display:block;border-radius:18px}
       @keyframes ainfoReactionPop{from{opacity:0;transform:translateY(5px) scale(.96)}to{opacity:1;transform:none}}
       @keyframes ainfoMainPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.13)}}
       @media(max-width:480px){
@@ -45,6 +50,7 @@
         .sticker-panel.ainfo-motion-stickers{grid-template-columns:repeat(4,52px)!important;width:244px}
         .sticker-panel.ainfo-motion-stickers .ainfo-sticker-gif{width:52px!important;height:52px!important}
         .sticker-panel.ainfo-motion-stickers .ainfo-sticker-gif img{width:45px;height:45px}
+        .comment-sticker.ainfo-animated-sticker img{width:96px;height:96px}
       }
     `;
     document.head.appendChild(style);
@@ -70,6 +76,23 @@
   function imageHtml(key,cls='ainfo-reaction-img'){
     const item=REACTIONS[key];
     return item?`<img class="${cls}" src="${item.src}" alt="${item.label}" draggable="false">`:'';
+  }
+
+  function customImageHtml(item,cls='ainfo-reaction-img'){
+    return item?`<img class="${cls}" src="${esc(item.url)}" alt="${esc(item.name)}" draggable="false" loading="lazy">`:'';
+  }
+
+  async function loadCustomStickers(){
+    try{
+      const r=await fetch('/api/public/stickers',{cache:'no-store',credentials:'same-origin'});
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok||!Array.isArray(d.stickers))return;
+      customStickers=d.stickers.filter(x=>x&&x.active!==false&&x.code&&x.url).slice(0,300);
+      customStickerMap=new Map(customStickers.map(x=>[String(x.code),x]));
+      stickerRevision++;
+      document.querySelectorAll('.sticker-panel').forEach(x=>delete x.dataset.ainfoMotionRevision);
+      requestEnhance();
+    }catch(e){console.warn('AINFO custom stickers unavailable',e)}
   }
 
   function enhanceReactionChoices(){
@@ -114,16 +137,26 @@
     });
   }
 
-  function showStickerPreview(key){
+  function showStickerPreview(token){
     const composer=document.querySelector('.comment-composer');
-    if(!composer||!REACTIONS[key])return;
+    if(!composer)return;
     let preview=composer.querySelector('.ainfo-sticker-preview');
     if(!preview){
       preview=document.createElement('div');preview.className='ainfo-sticker-preview';
       const tools=composer.querySelector('.comment-compose-tools');
       composer.insertBefore(preview,tools||null);
     }
-    preview.innerHTML=`${imageHtml(key,'ainfo-sticker-preview-img')}<div style="font-size:11px;font-weight:900;color:#334155">Stiker ${REACTIONS[key].label}</div><button type="button" aria-label="Hapus stiker">×</button>`;
+    let body='';
+    const reaction=String(token||'').match(/^sticker:(like|love|haha|wow|sad|angry)$/i);
+    const custom=String(token||'').match(/^custom:([a-z0-9-]+)$/i);
+    if(reaction){
+      const key=reaction[1].toLowerCase();body=`${imageHtml(key,'ainfo-sticker-preview-img')}<div style="font-size:11px;font-weight:900;color:#334155">Stiker ${REACTIONS[key].label}</div>`;
+    }else if(custom&&customStickerMap.has(custom[1])){
+      const item=customStickerMap.get(custom[1]);body=`${customImageHtml(item,'ainfo-sticker-preview-img')}<div style="font-size:11px;font-weight:900;color:#334155">${esc(item.name)}</div>`;
+    }else{
+      body=`<div style="font-size:28px">${esc(token)}</div><div style="font-size:11px;font-weight:900;color:#334155">Stiker cepat</div>`;
+    }
+    preview.innerHTML=`${body}<button type="button" aria-label="Hapus stiker">×</button>`;
     preview.querySelector('button')?.addEventListener('click',()=>{
       try{if(typeof window.chooseCommentSticker==='function')window.chooseCommentSticker('')}catch{}
       preview.remove();
@@ -132,29 +165,30 @@
 
   function buildStickerPanel(){
     document.querySelectorAll('.sticker-panel').forEach(panel=>{
-      if(panel.dataset.ainfoMotion==='1')return;
-      panel.dataset.ainfoMotion='1';
+      const rev=String(stickerRevision);
+      if(panel.dataset.ainfoMotionRevision===rev)return;
+      panel.dataset.ainfoMotionRevision=rev;
       panel.classList.add('ainfo-motion-stickers');
       panel.innerHTML='';
-      const title=document.createElement('div');title.className='ainfo-sticker-title';title.textContent='Stiker bergerak';panel.appendChild(title);
+
+      const title=document.createElement('div');title.className='ainfo-sticker-title';title.textContent='Stiker reaction';panel.appendChild(title);
       Object.entries(REACTIONS).forEach(([key,item])=>{
-        const button=document.createElement('button');button.type='button';button.className='ainfo-sticker-gif';button.title=`Stiker ${item.label}`;button.setAttribute('aria-label',`Stiker ${item.label}`);
-        button.innerHTML=imageHtml(key);
-        button.addEventListener('click',()=>{
-          if(typeof window.chooseCommentSticker==='function')window.chooseCommentSticker(`sticker:${key}`);
-          showStickerPreview(key);
-          panel.classList.remove('open');
-        });
-        panel.appendChild(button);
+        const button=document.createElement('button');button.type='button';button.className='ainfo-sticker-gif';button.title=`Stiker ${item.label}`;button.setAttribute('aria-label',`Stiker ${item.label}`);button.innerHTML=imageHtml(key);
+        button.addEventListener('click',()=>{const token=`sticker:${key}`;if(typeof window.chooseCommentSticker==='function')window.chooseCommentSticker(token);showStickerPreview(token);panel.classList.remove('open')});panel.appendChild(button);
       });
+
+      if(customStickers.length){
+        const customTitle=document.createElement('div');customTitle.className='ainfo-sticker-title';customTitle.textContent='Stiker karakter';panel.appendChild(customTitle);
+        customStickers.forEach(item=>{
+          const button=document.createElement('button');button.type='button';button.className='ainfo-sticker-gif';button.title=item.name||'Stiker';button.setAttribute('aria-label',item.name||'Stiker');button.innerHTML=customImageHtml(item);
+          button.addEventListener('click',()=>{const token=`custom:${item.code}`;if(typeof window.chooseCommentSticker==='function')window.chooseCommentSticker(token);showStickerPreview(token);panel.classList.remove('open')});panel.appendChild(button);
+        });
+      }
+
       const subtitle=document.createElement('div');subtitle.className='ainfo-sticker-title';subtitle.textContent='Stiker cepat';panel.appendChild(subtitle);
       STATIC_STICKERS.forEach(sticker=>{
         const button=document.createElement('button');button.type='button';button.className='ainfo-sticker-static';button.textContent=sticker;button.title='Kirim stiker';
-        button.addEventListener('click',()=>{
-          if(typeof window.chooseCommentSticker==='function')window.chooseCommentSticker(sticker);
-          panel.classList.remove('open');
-        });
-        panel.appendChild(button);
+        button.addEventListener('click',()=>{if(typeof window.chooseCommentSticker==='function')window.chooseCommentSticker(sticker);showStickerPreview(sticker);panel.classList.remove('open')});panel.appendChild(button);
       });
     });
   }
@@ -162,29 +196,25 @@
   function renderAnimatedCommentStickers(){
     document.querySelectorAll('.comment-sticker').forEach(box=>{
       const raw=(box.dataset.ainfoStickerToken||box.textContent||'').trim();
-      const match=raw.match(/^sticker:(like|love|haha|wow|sad|angry)$/i);
-      if(!match)return;
-      const key=match[1].toLowerCase();
-      box.dataset.ainfoStickerToken=raw;
-      box.classList.add('ainfo-animated-sticker');
-      if(box.querySelector('img[data-key="'+key+'"]'))return;
-      box.innerHTML=`<img src="${REACTIONS[key].src}" alt="Stiker ${REACTIONS[key].label}" data-key="${key}" loading="lazy">`;
+      if(!raw)return;
+      const reaction=raw.match(/^sticker:(like|love|haha|wow|sad|angry)$/i);
+      if(reaction){
+        const key=reaction[1].toLowerCase();box.dataset.ainfoStickerToken=raw;box.classList.add('ainfo-animated-sticker');
+        if(!box.querySelector(`img[data-key="${key}"]`))box.innerHTML=`<img src="${REACTIONS[key].src}" alt="Stiker ${REACTIONS[key].label}" data-key="${key}" loading="lazy">`;
+        return;
+      }
+      const custom=raw.match(/^custom:([a-z0-9-]+)$/i);
+      if(custom&&customStickerMap.has(custom[1])){
+        const item=customStickerMap.get(custom[1]);box.dataset.ainfoStickerToken=raw;box.classList.add('ainfo-animated-sticker');
+        if(!box.querySelector(`img[data-code="${custom[1]}"]`))box.innerHTML=`<img src="${esc(item.url)}" alt="${esc(item.name)}" data-code="${esc(custom[1])}" loading="lazy">`;
+      }
     });
   }
 
-  function enhance(){
-    addStyles();
-    enhanceReactionChoices();
-    enhanceMainReactionButtons();
-    buildStickerPanel();
-    renderAnimatedCommentStickers();
-  }
+  function enhance(){addStyles();enhanceReactionChoices();enhanceMainReactionButtons();buildStickerPanel();renderAnimatedCommentStickers()}
 
   let scheduled=false;
-  const requestEnhance=()=>{
-    if(scheduled)return;scheduled=true;
-    requestAnimationFrame(()=>{scheduled=false;enhance()});
-  };
+  const requestEnhance=()=>{if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;enhance()})};
 
   document.addEventListener('click',event=>{
     const target=event.target instanceof Element?event.target:null;
@@ -193,5 +223,6 @@
 
   const observer=new MutationObserver(requestEnhance);
   observer.observe(document.documentElement,{childList:true,subtree:true});
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',enhance,{once:true});else enhance();
+  const boot=()=>{enhance();loadCustomStickers()};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
