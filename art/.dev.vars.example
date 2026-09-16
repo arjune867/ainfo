@@ -1,0 +1,11 @@
+# Copy to .dev.vars for local development. Never commit real secret values.
+SESSION_SECRET=replace_me
+AINFO_PUBLISH_URL=https://www.ainfo.web.id/api/internal/publish
+AINFO_PUBLISH_TOKEN=replace_me
+OPENAI_API_KEY=
+GEMINI_API_KEY=
+ANTHROPIC_API_KEY=
+GROQ_API_KEY=
+MISTRAL_API_KEY=
+DEEPSEEK_API_KEY=
+OPENROUTER_API_KEY=
