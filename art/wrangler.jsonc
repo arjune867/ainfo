@@ -1,0 +1,37 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "ainfo-art",
+  "main": "worker/src/index.ts",
+  "compatibility_date": "2026-09-16",
+  "workers_dev": true,
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ainfo-db",
+      "database_id": "105007d1-0a57-4957-9f32-3c2f5d094d1a",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "ainfo-media-prod"
+    }
+  ],
+  "vars": {
+    "APP_NAME": "AINFO AI Newsroom",
+    "SITE_URL": "https://art.ainfo.web.id",
+    "AINFO_SITE_URL": "https://www.ainfo.web.id",
+    "DEFAULT_ARTICLE_LENGTH": "1200-1500",
+    "DEFAULT_STYLE": "Jurnalis profesional"
+  },
+  "triggers": {
+    "crons": ["*/5 * * * *"]
+  }
+}
