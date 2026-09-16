@@ -75,7 +75,6 @@
     }catch(e){console.warn('AINFO bootstrap fallback to local defaults',e)}
   }
 
-
   async function setupTurnstile(){
     if(!isHttp)return;
     try{
@@ -121,7 +120,6 @@
     return d.url||'';
   }
 
-
   async function enhanceAdminProduction(){
     if(!location.pathname.startsWith('/admin'))return;
     const wrapOnce=(name,after)=>{
@@ -146,9 +144,18 @@
   function loadEngagementMotion(){
     if(location.pathname.startsWith('/admin')||document.querySelector('script[data-ainfo-engagement-motion]'))return;
     const sc=document.createElement('script');
-    sc.src='/engagement-motion.js?v=20260917';
+    sc.src='/engagement-motion.js?v=20260917b';
     sc.async=true;
     sc.dataset.ainfoEngagementMotion='1';
+    document.head.appendChild(sc);
+  }
+
+  function loadAdminStickerManager(){
+    if(!location.pathname.startsWith('/admin')||document.querySelector('script[data-ainfo-admin-stickers]'))return;
+    const sc=document.createElement('script');
+    sc.src='/admin-stickers.js?v=20260917';
+    sc.async=true;
+    sc.dataset.ainfoAdminStickers='1';
     document.head.appendChild(sc);
   }
 
@@ -156,6 +163,7 @@
     bootstrap();
     setupTurnstile();
     loadEngagementMotion();
+    loadAdminStickerManager();
     if(location.pathname.startsWith('/admin')){
       setTimeout(()=>{window.fileToDataUrl=uploadImage;enhanceAdminProduction()},0);
     }
