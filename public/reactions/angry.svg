@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Marah">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#EF3E47"/>
+      <stop offset=".55" stop-color="#FF8B62"/>
+      <stop offset="1" stop-color="#FFD873"/>
+    </linearGradient>
+  </defs>
+  <circle cx="48" cy="48" r="43" fill="url(#g)"/>
+  <g fill="#231F20">
+    <path d="M23 39c7 6 13 8 20 8M73 39c-7 6-13 8-20 8" fill="none" stroke="#231F20" stroke-width="5" stroke-linecap="round"/>
+    <path d="M31 47c0 6 3 10 7 10s7-4 7-10M51 47c0 6 3 10 7 10s7-4 7-10"/>
+    <path d="M36 69c7-2 17-2 24 0" fill="none" stroke="#231F20" stroke-width="5" stroke-linecap="round"/>
+    <animateTransform attributeName="transform" type="translate" values="-1 0;2 0;-2 0;1 0;-1 0" dur=".32s" repeatCount="indefinite"/>
+  </g>
+</svg>
