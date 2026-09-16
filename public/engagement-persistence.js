@@ -18,31 +18,73 @@
   function loggedIn(){try{return Boolean(authUser&&authUser.id)}catch{return false}}
   function fmt(n){return Number(n||0).toLocaleString('id-ID')}
   function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+  function isHttpUrl(v){return /^https?:\/\//i.test(String(v||'').trim())}
+
+  function ensureCommentStyles(){
+    if(document.getElementById('ainfo-comment-fix-style'))return;
+    const style=document.createElement('style');
+    style.id='ainfo-comment-fix-style';
+    style.textContent=`
+      #comments .comment>.avatar{overflow:hidden!important;position:relative;flex:0 0 38px!important;min-width:38px!important;max-width:38px!important}
+      #comments .comment>.avatar img{display:block!important;width:100%!important;height:100%!important;object-fit:cover!important;border-radius:50%!important}
+      #comments .ainfo-animated-sticker{display:inline-block!important;width:max-content!important;max-width:160px!important;overflow:visible!important}
+      #comments .ainfo-animated-sticker img.ainfo-comment-media{width:118px!important;height:118px!important;object-fit:contain!important;display:block!important;border-radius:18px!important;animation:ainfoStickerFloat 2.2s ease-in-out infinite!important;transform-origin:center center}
+      #comments .ainfo-animated-sticker.ainfo-gif-media img.ainfo-comment-media{width:min(220px,70vw)!important;height:auto!important;max-height:220px!important;object-fit:contain!important;background:transparent!important}
+      @keyframes ainfoStickerFloat{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-4px) scale(1.025)}}
+      @media(max-width:600px){#comments .ainfo-animated-sticker img.ainfo-comment-media{width:104px!important;height:104px!important}#comments .ainfo-animated-sticker.ainfo-gif-media img.ainfo-comment-media{width:min(210px,72vw)!important;height:auto!important}}
+      @media(prefers-reduced-motion:reduce){#comments .ainfo-animated-sticker img.ainfo-comment-media{animation:none!important}}
+    `;
+    document.head.appendChild(style);
+  }
 
   async function loadStickerMap(){
     if(stickerLoaded)return;stickerLoaded=true;
     try{const r=await fetch('/api/public/stickers',{cache:'no-store',credentials:'same-origin'});const d=await r.json();customStickerMap=new Map((d.stickers||[]).map(x=>[String(x.code),x]))}catch{}
   }
 
+  function fixCommentAvatars(){
+    document.querySelectorAll('#comments .comment>.avatar').forEach(box=>{
+      if(box.dataset.ainfoAvatarFixed==='1')return;
+      const raw=(box.textContent||'').trim();
+      if(!isHttpUrl(raw))return;
+      box.dataset.ainfoAvatarFixed='1';
+      box.textContent='';
+      const img=document.createElement('img');
+      img.src=raw;
+      img.alt='Foto profil';
+      img.loading='lazy';
+      img.referrerPolicy='no-referrer';
+      img.onerror=()=>{box.dataset.ainfoAvatarFixed='';box.textContent='AN'};
+      box.appendChild(img);
+    });
+  }
+
   async function animateCommentMedia(){
+    ensureCommentStyles();
+    fixCommentAvatars();
     await loadStickerMap();
     document.querySelectorAll('.comment-sticker').forEach(box=>{
       const raw=(box.dataset.ainfoToken||box.textContent||'').trim();
       if(!raw)return;
       box.dataset.ainfoToken=raw;
-      let src='',alt='Stiker';
+      let src='',alt='Stiker',isGif=false;
       const reaction=raw.match(/^sticker:(like|love|haha|wow|sad|angry)$/i);
       const custom=raw.match(/^custom:([a-z0-9-]+)$/i);
       const gif=raw.match(/^gif:(.+)$/i);
       if(reaction){src=`/reactions/${reaction[1].toLowerCase()}.svg`;alt=`Stiker ${reaction[1]}`}
-      else if(custom&&customStickerMap.has(custom[1])){const x=customStickerMap.get(custom[1]);src=x.url;alt=x.name||'Stiker'}
-      else if(gif){try{src=decodeURIComponent(gif[1])}catch{src=gif[1]}alt='GIF'}
+      else if(custom&&customStickerMap.has(custom[1])){
+        const x=customStickerMap.get(custom[1]);src=x.url;alt=x.name||'Stiker';isGif=/image\/(gif|webp)/i.test(String(x.mimeType||''));
+      }
+      else if(gif){try{src=decodeURIComponent(gif[1])}catch{src=gif[1]}alt='GIF';isGif=true}
+      else if(isHttpUrl(raw)){src=raw;alt='GIF';isGif=/\.(gif|webp)(?:$|\?)/i.test(raw)||/giphy|tenor|media\d?\.giphy/i.test(raw)}
       if(!src)return;
-      if(!/^https?:\/\//i.test(src)&&!src.startsWith('/'))return;
+      if(!isHttpUrl(src)&&!src.startsWith('/'))return;
       box.classList.add('ainfo-animated-sticker');
+      box.classList.toggle('ainfo-gif-media',isGif);
       box.style.fontSize='0';box.style.lineHeight='0';
-      box.innerHTML=`<img src="${esc(src)}" alt="${esc(alt)}" loading="lazy" decoding="async" style="width:118px;height:118px;object-fit:contain;display:block;border-radius:18px">`;
+      box.innerHTML=`<img class="ainfo-comment-media" src="${esc(src)}" alt="${esc(alt)}" loading="eager" referrerpolicy="no-referrer">`;
     });
+    fixCommentAvatars();
   }
 
   function renderMetrics(data){
@@ -130,9 +172,10 @@
   }
 
   let timer=0;
-  function schedule(force=false){clearTimeout(timer);timer=setTimeout(()=>{installOverrides();syncEngagement(force);animateCommentMedia()},120)}
+  function schedule(force=false){clearTimeout(timer);timer=setTimeout(()=>{installOverrides();syncEngagement(force);animateCommentMedia();fixCommentAvatars()},120)}
   window.addEventListener('hashchange',()=>{currentSyncedId=0;schedule(true)});
   window.addEventListener('load',()=>schedule(true));
   const observer=new MutationObserver(()=>schedule(false));observer.observe(document.documentElement,{childList:true,subtree:true});
+  ensureCommentStyles();
   installOverrides();
 })();
