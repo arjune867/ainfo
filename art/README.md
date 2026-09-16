@@ -2,36 +2,47 @@
 
 Target production URL: `https://art.ainfo.web.id`
 
-This directory is the Cloudflare-native home for AINFO AI Newsroom. It is intentionally isolated from the public portal code in the repository root.
+Folder ini adalah versi Cloudflare-native AINFO AI Newsroom dan sengaja dipisahkan dari portal publik di root repository.
+
+## Status saat ini
+
+Source production candidate sudah disiapkan di branch `feature/ainfo-art-newsroom`:
+
+- React + Vite responsive PWA
+- Sidebar desktop + bottom navigation mobile
+- Markdown preview/editor: H1/H2/H3, bold, italic, list, blockquote, link
+- News dari 1-5 URL
+- Source Lock + conflict analysis
+- Artikel topik, evergreen, press release dan bulk generator
+- High Value Content prompt lock
+- 7-AI router: OpenAI, Gemini, Anthropic, Groq, Mistral, DeepSeek, OpenRouter
+- Draft + revision history
+- Fact checker
+- Internal linking
+- SEO Tools
+- Thumbnail generator ke R2
+- Multi author + role Admin/Editor
+- Analytics
+- Schedule publish setiap 5 menit
+- AINFO/WordPress/Blogger/Generic API adapters
+- Cloudflare Access authentication
+- D1 persistence
+- GitHub Actions validation + deploy workflow
+
+Yang perlu Anda lakukan sendiri adalah konfigurasi account-level Cloudflare, secrets, Access, domain, dan publish endpoint. Lihat `SETUP-PRODUCTION.md`.
 
 ## Architecture
 
 - Frontend: React + Vite PWA
-- Backend: Cloudflare Worker
-- Database: Cloudflare D1 (`ainfo-db`) using `art_*` table prefixes
-- Media: Cloudflare R2 (`ainfo-media-prod`) using an `art/` key prefix
-- Scheduler: Worker cron every 5 minutes
+- Backend: Cloudflare Worker `ainfo-art`
+- Authentication: Cloudflare Access
+- Database: Cloudflare D1 `ainfo-db`, tabel memakai prefix `art_*`
+- Media: Cloudflare R2 `ainfo-media-prod`, object memakai prefix `art/`
+- Scheduler: Worker Cron setiap 5 menit
 - Publishing: authenticated AINFO Publishing API
-- AI routing: OpenAI, Gemini, Anthropic, Groq, Mistral, DeepSeek, OpenRouter with automatic fallback
+- AI routing: tujuh provider dengan automatic failover
 
-## Security
-
-Never commit API keys or publish tokens. Use Cloudflare Worker secrets for:
-
-- `SESSION_SECRET`
-- `AINFO_PUBLISH_URL`
-- `AINFO_PUBLISH_TOKEN`
-- `OPENAI_API_KEY`
-- `GEMINI_API_KEY`
-- `ANTHROPIC_API_KEY`
-- `GROQ_API_KEY`
-- `MISTRAL_API_KEY`
-- `DEEPSEEK_API_KEY`
-- `OPENROUTER_API_KEY`
-
-The public repository should only contain `.dev.vars.example` with empty/example values.
-
-## Local setup
+## Local development
 
 ```bash
 cd art
@@ -41,38 +52,60 @@ npm run db:migrate:local
 npm run dev
 ```
 
-## Production migration
+Untuk local auth, isi `DEV_AUTH_EMAIL` di `.dev.vars`. Variabel ini hanya untuk development dan tidak perlu menjadi production secret.
 
-The production Worker is named `ainfo-art`. The current configuration reuses the existing `ainfo-db` D1 database and `ainfo-media-prod` R2 bucket to avoid requiring new Cloudflare resources during migration. All newsroom database tables are prefixed `art_`.
+Untuk menjalankan frontend + Worker lokal:
 
-Before production deployment:
+```bash
+npm run cf:dev
+```
 
-1. Port the current newsroom React UI into `art/src`.
-2. Port AppDeploy backend routes to `art/worker/src/index.ts` using D1/R2 and provider APIs.
-3. Apply `art/migrations/0001_newsroom.sql` to the remote D1 database.
-4. Add all Worker secrets in Cloudflare.
-5. Deploy the `ainfo-art` Worker.
-6. Attach custom domain `art.ainfo.web.id`.
-7. Configure Cloudflare Access or the newsroom login policy.
-8. Configure the internal publish endpoint on `ainfo.web.id` and verify end-to-end publishing.
+## Production
+
+Baca langkah lengkap:
+
+`SETUP-PRODUCTION.md`
+
+Ringkasnya:
+
+1. isi GitHub Actions secrets `CLOUDFLARE_API_TOKEN` dan `CLOUDFLARE_ACCOUNT_ID`
+2. merge PR ke `main`
+3. biarkan workflow apply migration + deploy Worker
+4. isi Worker secrets untuk AI dan publishing
+5. aktifkan Cloudflare Access untuk `art.ainfo.web.id`
+6. pasang custom domain `art.ainfo.web.id`
+7. siapkan endpoint publish private di portal AINFO
+8. lakukan full end-to-end test
+
+## Security
+
+Jangan pernah commit nilai asli untuk:
+
+- `AINFO_PUBLISH_TOKEN`
+- API key tujuh provider AI
+- WordPress/Blogger/Generic API credentials
+
+`.dev.vars` sudah di-ignore. Repository hanya menyimpan `.dev.vars.example`.
 
 ## Editorial standard
 
-The migrated application must preserve the locked AINFO High Value Content standard, including:
+Semua generator memakai standar High Value Content AINFO:
 
-- 1,000+ word target when the factual material supports it
-- structured H1/H2/H3 output
-- Markdown rendering for bold, italic, lists, links and blockquotes
-- SEO title, meta description, slug and keyword metadata
-- source lock and fact checking for news workflows
-- explicit attribution and source transparency
-- YMYL source requirements
-- human review before sensitive publication
+- target 1.000+ kata bila bahan faktual mencukupi
+- H1/H2/H3 dan Markdown semantik
+- SEO title, meta description, slug dan keyword metadata
+- source lock dan fact checking untuk workflow berita
+- atribusi dan sumber transparan
+- YMYL mengutamakan sumber resmi/primer
+- tidak mengarang E-E-A-T, pengalaman, data atau kutipan
+- human review sebelum publikasi sensitif
 
-## Deployment
+## Manual deploy
 
 ```bash
+npm install
+npm run typecheck
+npm run build
+npm run db:migrate:remote
 npm run deploy
 ```
-
-GitHub Actions can also deploy this directory after Cloudflare repository secrets are configured.
