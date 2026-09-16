@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Suka">
+  <circle cx="48" cy="48" r="43" fill="#668BC7"/>
+  <g fill="#fff">
+    <rect x="27" y="47" width="12" height="25" rx="1"/>
+    <path d="M42 47c6-4 10-10 12-18 1-5 3-7 6-7 4 0 6 4 6 8 0 4-2 8-4 12h12c4 0 7 3 7 7 0 2-1 4-3 6 1 4-1 7-4 9 0 5-4 8-8 8H42V47Z">
+      <animateTransform attributeName="transform" type="translate" values="0 1;0 -3;0 1" dur="1s" repeatCount="indefinite"/>
+    </path>
+  </g>
+</svg>
