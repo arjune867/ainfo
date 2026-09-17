@@ -45,6 +45,6 @@
     "BACKUP_PREFIX": "backups"
   },
   "triggers": {
-    "crons": ["*/5 * * * *", "0 2 * * *", "0 2 * * *"]
+    "crons": ["*/5 * * * *", "0 2 * * *"]
   }
 }
