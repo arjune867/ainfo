@@ -1,8 +1,9 @@
 import previousWorker from './v14_13.js';
 
-const VERSION='14.14.0';
-const FIX_CSS='<link rel="stylesheet" href="/engagement-v14.14-fix.css?v=20260917a">';
-const FIX_JS='<script src="/engagement-v14.14-fix.js?v=20260917a"></script>';
+const VERSION='14.14.1';
+const FIX_CSS='<link rel="stylesheet" href="/engagement-v14.14-fix.css?v=20260917b">';
+const FIX_JS='<script src="/engagement-v14.14-fix.js?v=20260917b"></script>';
+const RX_STATE_JS='<script src="/reaction-state-v14.14.js?v=20260917b"></script>';
 
 function json(data,status=200,headers={}){return new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-ainfo-version':VERSION,...headers}})}
 
@@ -49,6 +50,7 @@ async function inject(req,res){
   let body=await res.text();
   if(!body.includes('/engagement-v14.14-fix.css'))body=/<\/head>/i.test(body)?body.replace(/<\/head>/i,`${FIX_CSS}</head>`):FIX_CSS+body;
   if(!body.includes('/engagement-v14.14-fix.js'))body=/<\/body>/i.test(body)?body.replace(/<\/body>/i,`${FIX_JS}</body>`):body+FIX_JS;
+  if(!body.includes('/reaction-state-v14.14.js'))body=/<\/body>/i.test(body)?body.replace(/<\/body>/i,`${RX_STATE_JS}</body>`):body+RX_STATE_JS;
   const headers=new Headers(res.headers);headers.delete('content-length');headers.set('x-ainfo-version',VERSION);headers.set('x-ainfo-engagement-fix','reply-shop-reaction');
   return new Response(body,{status:res.status,statusText:res.statusText,headers});
 }
