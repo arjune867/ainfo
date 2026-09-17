@@ -1,7 +1,7 @@
 {
   "name": "ainfo-v14-production",
   "private": true,
-  "version": "14.17.3",
+  "version": "14.17.4",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
