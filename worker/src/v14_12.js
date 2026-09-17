@@ -1,8 +1,9 @@
 import previousWorker from './v14_11.js';
 
 const VERSION='14.12.0';
-const ENG_CSS='<link rel="stylesheet" href="/engagement-v14.12.css?v=20260917a">';
-const ENG_JS='<script src="/engagement-v14.12.js?v=20260917a"></script>';
+const ENG_CSS='<link rel="stylesheet" href="/engagement-v14.12.css?v=20260917b">';
+const GIPHY_PROXY_JS='<script src="/giphy-proxy-client.js?v=20260917b"></script>';
+const ENG_JS='<script src="/engagement-v14.12.js?v=20260917b"></script>';
 
 function json(data,status=200,headers={}){return new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...headers}})}
 function cookies(req){const out={};for(const part of (req.headers.get('cookie')||'').split(';')){const i=part.indexOf('=');if(i>0)out[part.slice(0,i).trim()]=decodeURIComponent(part.slice(i+1).trim())}return out}
@@ -43,7 +44,7 @@ async function giphyConfig(env){const key=giphyKey(env);return json({ok:true,ver
 async function giphyProxy(req,env){const key=giphyKey(env);if(!key)return json({error:'giphy_not_configured',message:'Set GIPHY_API_KEY sebagai Cloudflare Secret.'},503);const u=new URL(req.url),mode=u.searchParams.get('mode')==='search'?'search':'trending',q=String(u.searchParams.get('q')||'').trim().slice(0,50),limit=Math.max(1,Math.min(30,Number(u.searchParams.get('limit')||24)));const target=new URL(`https://api.giphy.com/v1/gifs/${mode}`);target.searchParams.set('api_key',key);target.searchParams.set('limit',String(limit));target.searchParams.set('rating','pg');target.searchParams.set('bundle','messaging_non_clips');if(mode==='search'){target.searchParams.set('q',q||'reaction');target.searchParams.set('lang','id')}const r=await fetch(target.toString(),{headers:{accept:'application/json'}});const text=await r.text();return new Response(text,{status:r.status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'public, max-age=120'}})}
 
 function shouldInject(req,res){return req.method==='GET'&&String(res.headers.get('content-type')||'').toLowerCase().includes('text/html')}
-async function injectAssets(req,res){if(!shouldInject(req,res))return res;let body=await res.text();if(!body.includes('/engagement-v14.12.css'))body=/<\/head>/i.test(body)?body.replace(/<\/head>/i,`${ENG_CSS}</head>`):ENG_CSS+body;if(!body.includes('/engagement-v14.12.js'))body=/<\/body>/i.test(body)?body.replace(/<\/body>/i,`${ENG_JS}</body>`):body+ENG_JS;const headers=new Headers(res.headers);headers.delete('content-length');headers.set('x-ainfo-version',VERSION);headers.set('x-ainfo-engagement','article-video-shop');return new Response(body,{status:res.status,statusText:res.statusText,headers})}
+async function injectAssets(req,res){if(!shouldInject(req,res))return res;let body=await res.text();if(!body.includes('/engagement-v14.12.css'))body=/<\/head>/i.test(body)?body.replace(/<\/head>/i,`${ENG_CSS}</head>`):ENG_CSS+body;if(!body.includes('/giphy-proxy-client.js'))body=/<\/body>/i.test(body)?body.replace(/<\/body>/i,`${GIPHY_PROXY_JS}</body>`):body+GIPHY_PROXY_JS;if(!body.includes('/engagement-v14.12.js'))body=/<\/body>/i.test(body)?body.replace(/<\/body>/i,`${ENG_JS}</body>`):body+ENG_JS;const headers=new Headers(res.headers);headers.delete('content-length');headers.set('x-ainfo-version',VERSION);headers.set('x-ainfo-engagement','article-video-shop');headers.set('x-ainfo-giphy','secret-proxy');return new Response(body,{status:res.status,statusText:res.statusText,headers})}
 
 async function route(req,env,ctx){const u=new URL(req.url),p=u.pathname;if(p==='/api/shop/engagement'&&req.method==='GET')return shopEngagementGet(req,env);if(p==='/api/shop/comment'&&req.method==='POST')return shopCommentPost(req,env,ctx);if(p==='/api/shop/comment/reaction'&&req.method==='POST')return shopCommentReaction(req,env,ctx);if(p==='/api/public/giphy-config'&&req.method==='GET')return giphyConfig(env);if(p==='/api/giphy'&&req.method==='GET')return giphyProxy(req,env);const res=await previousWorker.fetch(req,env,ctx);return injectAssets(req,res)}
 
