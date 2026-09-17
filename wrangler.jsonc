@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "ainfo",
-  "main": "worker/src/v14_9.js",
+  "main": "worker/src/v14_8.js",
   "compatibility_date": "2026-09-16",
   "workers_dev": true,
   "assets": {
