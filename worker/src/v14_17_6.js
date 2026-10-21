@@ -10,11 +10,14 @@ async function decorate(req,res){
   const h=new Headers(res.headers);h.set('x-ainfo-version',VERSION);
   if(!isHtml(req,res))return new Response(res.body,{status:res.status,statusText:res.statusText,headers:h});
   const path=new URL(req.url).pathname;
-  if(!path.startsWith('/admin'))return new Response(res.body,{status:res.status,statusText:res.statusText,headers:h});
   let body=await res.text();
-  if(!body.includes('/admin-video-sources-fast-v14.17.6.css'))body=/<\/head>/i.test(body)?body.replace(/<\/head>/i,`${FAST_CSS}</head>`):FAST_CSS+body;
-  if(!body.includes('/admin-video-sources-fast-v14.17.6.js'))body=/<\/body>/i.test(body)?body.replace(/<\/body>/i,`${FAST_JS}</body>`):body+FAST_JS;
-  h.delete('content-length');h.set('x-ainfo-admin-video-load','progressive');
+  if(!body.includes('ca-pub-1267510049036918'))body=/<\\/head>/i.test(body)?body.replace(/<\\/head>/i,`${ADSENSE}</head>`):ADSENSE+body;
+  if(path.startsWith('/admin')){
+    if(!body.includes('/admin-video-sources-fast-v14.17.6.css'))body=/<\\/head>/i.test(body)?body.replace(/<\\/head>/i,`${FAST_CSS}</head>`):FAST_CSS+body;
+    if(!body.includes('/admin-video-sources-fast-v14.17.6.js'))body=/<\\/body>/i.test(body)?body.replace(/<\\/body>/i,`${FAST_JS}</body>`):body+FAST_JS;
+    h.set('x-ainfo-admin-video-load','progressive');
+  }
+  h.delete('content-length');
   return new Response(body,{status:res.status,statusText:res.statusText,headers:h});
 }
 
