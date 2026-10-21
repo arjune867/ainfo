@@ -3,6 +3,7 @@ import previousWorker from './v14_17_5.js';
 const VERSION='14.17.6';
 const FAST_CSS='<link rel="stylesheet" href="/admin-video-sources-fast-v14.17.6.css?v=20260917a">';
 const FAST_JS='<script src="/admin-video-sources-fast-v14.17.6.js?v=20260917a"></script>';
+const ADSENSE='<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1267510049036918" crossorigin="anonymous"></script>';
 
 function isHtml(req,res){return req.method==='GET'&&String(res.headers.get('content-type')||'').toLowerCase().includes('text/html')}
 async function decorate(req,res){
