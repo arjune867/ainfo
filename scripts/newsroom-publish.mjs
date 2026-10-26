@@ -44,7 +44,7 @@ export function prepareArticle(input, now = new Date().toISOString()) {
     image_url: image, image_caption: requireText(input.imageCaption, 'imageCaption', 300),
     status: 'published', read_minutes: String(Math.max(1,Math.ceil(plain.trim().split(/\s+/).length/220))),
     seo_title: requireText(input.metaTitle || title, 'metaTitle', 300), seo_description: description,
-    canonical_url: `https://ainfo.web.id/read/${slug}/`, published_at: now,
+    canonical_url: `https://www.ainfo.web.id/read/${slug}/`, published_at: now,
     tags_json: JSON.stringify(tags), keywords: tags.join(', ').slice(0,1000), modified_at: now,
   };
 }
@@ -125,7 +125,7 @@ export async function main() {
     const webp = bytes.toString('ascii',0,4)==='RIFF' && bytes.toString('ascii',8,12)==='WEBP';
     const ext = path.extname(article.image_url);
     if (!bytes.length || bytes.length > 8*1024*1024 || !({'.png':png,'.jpg':jpeg,'.jpeg':jpeg,'.webp':webp}[ext])) throw new Error(`Invalid thumbnail: ${file}`);
-    const imageResponse = await fetch(`https://ainfo.web.id${article.image_url}`,{method:'HEAD',signal:AbortSignal.timeout(30000)});
+    const imageResponse = await fetch(`https://www.ainfo.web.id${article.image_url}`,{method:'HEAD',signal:AbortSignal.timeout(30000)});
     if (!imageResponse.ok || !imageResponse.headers.get('content-type')?.startsWith('image/')) throw new Error(`Thumbnail not deployed: ${file}`);
     queue.push({file,article});
   }
