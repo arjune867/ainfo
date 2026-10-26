@@ -55,6 +55,45 @@ export function insertQuery(article) {
 export function sameArticle(existing, article) {
   return Object.keys(article).filter(k=>!['published_at','modified_at'].includes(k)).every(k=>String(existing[k])===String(article[k]));
 }
+
+export function toAdminArticle(row) {
+  let content = [];
+  let tags = [];
+  try { content = JSON.parse(row.content_json || '[]'); } catch {}
+  try { tags = JSON.parse(row.tags_json || '[]'); } catch {}
+  const published = row.published_at || row.modified_at || row.updated_at || '';
+  const image = String(row.image_url || '');
+  return {
+    id: Number(row.id) || row.id, slug: String(row.slug || ''), title: String(row.title || ''),
+    cat: String(row.category || 'Berita'), category: String(row.category || 'Berita'),
+    excerpt: String(row.excerpt || ''), content: Array.isArray(content) ? content : [],
+    contentHtml: String(row.content_html || ''), content_html: String(row.content_html || ''),
+    author: String(row.author_name || 'Tim AINFO'), image, image_url: image,
+    imageCaption: String(row.image_caption || ''), image_caption: String(row.image_caption || ''),
+    status: String(row.status || 'draft'), publishedISO: String(published), published_at: String(row.published_at || ''),
+    modifiedISO: String(row.modified_at || row.updated_at || published), modified_at: String(row.modified_at || row.updated_at || ''),
+    time: published ? new Date(published).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' WIB' : '',
+    read: `${Number(row.read_minutes || 5)} menit baca`, read_time: `${Number(row.read_minutes || 5)} menit baca`,
+    views: Number(row.views || 0), headline: Boolean(row.headline), breaking: Boolean(row.breaking),
+    editorPick: Boolean(row.editor_pick), editor_pick: Boolean(row.editor_pick),
+    tags: Array.isArray(tags) ? tags : [], keywords: String(row.keywords || ''),
+    seoTitle: String(row.seo_title || ''), seo_title: String(row.seo_title || ''),
+    seoDescription: String(row.seo_description || ''), seo_description: String(row.seo_description || ''),
+    canonicalUrl: String(row.canonical_url || ''), canonical_url: String(row.canonical_url || ''),
+    audioUrl: String(row.audio_url || ''), audio_url: String(row.audio_url || ''),
+  };
+}
+
+export function mergePublishedArticles(existing, publishedRows) {
+  const out = Array.isArray(existing) ? [...existing] : [];
+  for (const row of publishedRows || []) {
+    const article = toAdminArticle(row);
+    const index = out.findIndex(item => String(item.slug || '') === article.slug || String(item.id) === String(article.id));
+    if (index >= 0) out[index] = { ...out[index], ...article };
+    else out.unshift(article);
+  }
+  return out;
+}
 export async function main() {
   const root = process.cwd();
   const token = process.env.CLOUDFLARE_API_TOKEN;
@@ -103,7 +142,17 @@ export async function main() {
     if (saved.length!==1 || !sameArticle(saved[0],article)) throw new Error(`Publication verification failed: ${file}`);
     results.push({file,status:'published',url:article.canonical_url});
   }
-  console.log(JSON.stringify(results,null,2));
-  if (process.env.GITHUB_STEP_SUMMARY) await fs.appendFile(process.env.GITHUB_STEP_SUMMARY,`\n### AINFO publication\n${results.length ? results.map(r=>`- ${r.status}: [${r.file}](${r.url})`).join('\n') : 'Ready. No publication requests; existing drafts remain unchanged.'}\n`);
+  // Keep the public homepage and admin dashboard in sync with the canonical D1 articles.
+  const publishedRows = await query({sql:"SELECT * FROM articles WHERE status='published' ORDER BY COALESCE(published_at, updated_at) DESC LIMIT 500"});
+  const stateRows = await query({sql:"SELECT value_json FROM app_state WHERE key=?",params:["ainfo-admin-articles"]});
+  let currentArticles = [];
+  try { currentArticles = JSON.parse(stateRows[0]?.value_json || '[]'); } catch {}
+  const syncedArticles = mergePublishedArticles(currentArticles, publishedRows);
+  await query({
+    sql:"INSERT INTO app_state(key,value_json,version,updated_at) VALUES(?,?,1,CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json,version=app_state.version+1,updated_at=CURRENT_TIMESTAMP",
+    params:["ainfo-admin-articles", JSON.stringify(syncedArticles)]
+  });
+  console.log(JSON.stringify({publications:results, syncedPublishedArticles:publishedRows.length, adminStateArticles:syncedArticles.length},null,2));
+  if (process.env.GITHUB_STEP_SUMMARY) await fs.appendFile(process.env.GITHUB_STEP_SUMMARY,`\n### AINFO publication\n${results.length ? results.map(r=>`- ${r.status}: [${r.file}](${r.url})`).join('\n') : 'No new publication requests.'}\n- Published articles synchronized to homepage/admin state: ${publishedRows.length}.\n`);
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main().catch(e=>{console.error(e.message);process.exitCode=1;});
