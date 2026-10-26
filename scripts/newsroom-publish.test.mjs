@@ -1,0 +1,8 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {prepareArticle,insertQuery,sameArticle} from './newsroom-publish.mjs';
+const sample=()=>({schemaVersion:1,publish:true,requestId:'test-request',slug:'test-article',title:"Test ' quotation",thumbnail:'/newsroom-images/test.jpg',imageCaption:'Ilustrasi',category:'Nasional',metaDescription:'A description',blocks:[{type:'p',text:'Safe test content that is deliberately longer than eighty characters to validate the minimum article length.'}],sources:[],tags:['Test']});
+test('requires explicit publication authorization',()=>{assert.throws(()=>prepareArticle({...sample(),publish:false}));});
+test('escapes text and restricts active content and image paths',()=>{const s=sample();s.blocks[0].text+='<script>alert(1)</script>';assert(!prepareArticle(s).content_html.includes('<script>'));assert.throws(()=>prepareArticle({...sample(),thumbnail:'/newsroom-images/../private.jpg'}));assert.throws(()=>prepareArticle({...sample(),sources:[{title:'Bad',url:'javascript:alert(1)'}]}));});
+test('article SQL uses parameters, not string interpolation',()=>{const a=prepareArticle(sample());const q=insertQuery(a);assert(!q.sql.includes(a.title));assert(q.params.includes(a.title));assert.equal((q.sql.match(/\?/g)||[]).length,q.params.length);});
+test('retries preserve identity and detect modified publication requests',()=>{const a=prepareArticle(sample(),'2026-10-26T00:00:00Z');const b=prepareArticle(sample(),'2026-10-27T00:00:00Z');assert.equal(a.id,b.id);assert(sameArticle(a,b));assert(!sameArticle(a,{...b,title:'Changed'}));assert(!sameArticle(a,{...b,image_url:'/newsroom-images/other.jpg'}));});
