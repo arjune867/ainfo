@@ -3,6 +3,20 @@
 Target: **https://www.ainfo.web.id**  
 Stack: **Cloudflare Workers + Static Assets + D1 + R2**
 
+## GitHub Pages
+
+GitHub Pages memakai source **main /docs** melalui workflow otomatis
+`pages build and deployment` (bukan file workflow di `.github/workflows`).
+Folder `docs/` hanya berisi halaman pengarah ke `https://www.ainfo.web.id/`.
+File `docs/.nojekyll` menonaktifkan build Jekyll/Sass; pertahankan file ini.
+Jangan arahkan Pages ke root atau menyalin `public/` ke `docs/`: portal memerlukan
+API Worker, D1, dan R2 yang tidak dijalankan oleh GitHub Pages.
+Deploy portal utama tetap menggunakan `.github/workflows/deploy-main.yml`.
+
+Untuk verifikasi Pages, pastikan job build dan deploy sukses pada commit terbaru,
+serta halaman Pages mengarah ke domain utama. Perubahan `docs/` tidak memerlukan
+instalasi npm, kompilasi Sass, atau perubahan konfigurasi Worker.
+
 V14 mempertahankan UI/CMS V13, tetapi persistence dan security dipindah ke backend Cloudflare. `localStorage` hanya menjadi cache/fallback UI; state utama disinkronkan ke D1 melalui `/api/admin/state`.
 
 ## Yang sudah diimplementasikan
