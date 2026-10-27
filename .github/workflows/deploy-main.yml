@@ -11,6 +11,7 @@ on:
       - 'wrangler.jsonc'
       - 'package.json'
       - 'scripts/newsroom-publish*'
+      - 'scripts/article-preview.test.mjs'
       - 'newsroom/**'
       - '.github/workflows/deploy-main.yml'
   workflow_dispatch:
@@ -34,8 +35,8 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Test newsroom publication
-        run: node --test scripts/newsroom-publish.test.mjs
+      - name: Test newsroom publication and article previews
+        run: node --test scripts/newsroom-publish.test.mjs scripts/article-preview.test.mjs
 
       - name: Typecheck
         run: npm run typecheck
