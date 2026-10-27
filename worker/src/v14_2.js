@@ -352,19 +352,40 @@ async function articleSsr(req, env) {
   return html(page, 200, { 'cache-control': 'public, max-age=60, s-maxage=300', 'x-ainfo-version': VERSION });
 }
 
+// Public links must be present before JavaScript renders the portal.
+async function homeWithArticleLinks(req, env, ctx) {
+  const response = await legacy.fetch(req, env, ctx);
+  if (!response.ok || !String(response.headers.get('content-type')).includes('text/html')) return response;
+  const rows = await env.DB.prepare("SELECT slug,title,excerpt FROM articles WHERE status='published' ORDER BY published_at DESC LIMIT 500000").all();
+  const links = (rows.results || []).filter(a => a.slug).map(a => `<li><a href="${h(`${site(env)}/read/${encodeURIComponent(a.slug)}/`)}">${h(a.title)}</a>${a.excerpt ? `<p>${h(a.excerpt)}</p>` : ''}</li>`).join('');
+  const section = `<section class="container" aria-label="Daftar artikel AINFO" style="padding-top:24px;padding-bottom:32px"><h2>Daftar Artikel AINFO</h2><ul style="line-height:1.7">${links}</ul></section>`;
+  const body = (await response.text()).replace('<footer', section + '<footer');
+  const headers = new Headers(response.headers);
+  headers.delete('content-length');
+  headers.set('cache-control', 'public, max-age=60, s-maxage=300');
+  return new Response(body, {status: response.status, headers});
+}
+
+function sitemapDate(value) {
+  if (!value) return '';
+  const raw = String(value).trim();
+  const date = new Date(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(raw) ? raw.replace(' ', 'T') + 'Z' : raw);
+  return Number.isNaN(date.getTime()) ? '' : date.toISOString();
+}
+
 async function dynamicSitemap(env, news = false) {
   const base = site(env);
-  const rows = await env.DB.prepare("SELECT slug,title,published_at,COALESCE(modified_at,updated_at) modified_at FROM articles WHERE status='published' AND published_at IS NOT NULL ORDER BY published_at DESC LIMIT 5000").all();
+  const rows = await env.DB.prepare("SELECT slug,title,published_at,COALESCE(modified_at,updated_at) modified_at FROM articles WHERE status='published' AND published_at IS NOT NULL ORDER BY published_at DESC LIMIT 50000").all();
   const items = rows.results || [];
   if (news) {
     const now = Date.now();
     const recent = items.filter((a) => {
       const t = Date.parse(a.published_at || a.modified_at || '');
-      return t && now - t <= 2 * 86400000;
+      return t && t <= now && now - t <= 2 * 86400000;
     }).slice(0, 1000);
-    return xml(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">${recent.map((a) => `<url><loc>${h(`${base}/read/${a.slug}/`)}</loc><news:news><news:publication><news:name>AINFO</news:name><news:language>id</news:language></news:publication><news:publication_date>${h(a.published_at)}</news:publication_date><news:title>${h(a.title)}</news:title></news:news></url>`).join('')}</urlset>`);
+    return xml(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">${recent.map((a) => `<url><loc>${h(`${base}/read/${a.slug}/`)}</loc><news:news><news:publication><news:name>AINFO</news:name><news:language>id</news:language></news:publication><news:publication_date>${h(sitemapDate(a.published_at))}</news:publication_date><news:title>${h(a.title)}</news:title></news:news></url>`).join('')}</urlset>`);
   }
-  return xml(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${base}/</loc><changefreq>hourly</changefreq><priority>1.0</priority></url>${items.map((a) => `<url><loc>${h(`${base}/read/${a.slug}/`)}</loc><lastmod>${h(a.modified_at || a.published_at)}</lastmod><changefreq>daily</changefreq><priority>0.8</priority></url>`).join('')}</urlset>`);
+  return xml(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${base}/</loc><changefreq>hourly</changefreq><priority>1.0</priority></url>${items.map((a) => `<url><loc>${h(`${base}/read/${a.slug}/`)}</loc>${sitemapDate(a.modified_at || a.published_at) ? `<lastmod>${sitemapDate(a.modified_at || a.published_at)}</lastmod>` : ''}<changefreq>daily</changefreq><priority>0.8</priority></url>`).join('')}</urlset>`);
 }
 
 async function route(req, env, ctx) {
@@ -413,6 +434,8 @@ async function route(req, env, ctx) {
     }
     return response;
   }
+
+  if ((path === '/' || path === '/index.html') && req.method === 'GET') return homeWithArticleLinks(req, env, ctx);
 
   if (/^\/read\/[^/]+\/?$/.test(path) && req.method === 'GET') return articleSsr(req, env);
   if (path === '/sitemap.xml' && req.method === 'GET') {
