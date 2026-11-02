@@ -12,8 +12,8 @@ function site(env){return String(env.DOMAIN||'https://www.ainfo.web.id').replace
 function categoryAllowed(value){return EVERGREEN_CATEGORIES.some(x=>x.toLowerCase()===String(value||'').trim().toLowerCase())}
 function xml(body){return new Response(body,{status:200,headers:{'content-type':'application/xml; charset=utf-8','cache-control':'public, max-age=300','x-ainfo-version':VERSION}})}
 
-async function publicArticles(req,env){
-  const res=await previousWorker.fetch(req,env);
+async function publicArticles(req,env,ctx){
+  const res=await previousWorker.fetch(req,env,ctx);
   if(!res.ok)return res;
   try{
     const data=await res.json();
@@ -37,6 +37,12 @@ async function decorate(req,res){
   let body=await res.text();
   // The previous homepage injected every legacy news URL into visible HTML. Remove that list during the evergreen transition.
   body=body.replace(/<section[^>]*aria-label="Daftar artikel AINFO"[\s\S]*?<\/section>/i,'');
+  if(path.startsWith('/read/')){
+    body=body.replace(/<html lang="id"/i,'<html lang="en"');
+    body=body.replace(/NewsArticle/g,'BlogPosting').replace(/NewsMediaOrganization/g,'Organization').replace(/id-ID/g,'en-US').replace(/id_ID/g,'en_US');
+    body=body.replace(/Daftar Isi/g,'Table of Contents').replace(/Beranda/g,'Home').replace(/menit baca/g,'min read').replace(/Buka versi interaktif AINFO/g,'Read on AINFO');
+    body=body.replace(/Berita yang Lebih Bermakna/g,'Practical ideas for better homes and gardens');
+  }
   if(!body.includes('ca-pub-1267510049036918'))body=/<\/head>/i.test(body)?body.replace(/<\/head>/i,ADSENSE+'</head>'):ADSENSE+body;
   if(path.startsWith('/admin')){
     if(!body.includes('/admin-video-sources-fast-v14.17.6.css'))body=/<\/head>/i.test(body)?body.replace(/<\/head>/i,FAST_CSS+'</head>'):FAST_CSS+body;
@@ -51,7 +57,7 @@ export default{
   async fetch(req,env,ctx){
     const u=new URL(req.url),p=u.pathname;
     try{
-      if(p==='/api/articles'&&req.method==='GET')return publicArticles(req,env);
+      if(p==='/api/articles'&&req.method==='GET')return publicArticles(req,env,ctx);
       if(p==='/sitemap.xml'&&req.method==='GET')return evergreenSitemap(env);
       if(p==='/news-sitemap.xml'&&req.method==='GET')return xml('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9"></urlset>');
       const match=p.match(/^\/read\/([^/]+)\/?$/);
