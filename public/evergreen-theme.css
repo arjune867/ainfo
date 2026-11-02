@@ -1,0 +1,21 @@
+/* AINFO Evergreen Home & Garden public theme */
+:root{--blue:#276749;--blue-2:#2f855a;--navy:#173b2d;--green:#276749;--teal:#2f855a;--soft:#f4f8f4}
+body{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+.site-header{border-bottom-color:#e1ebe2}
+.brand:after{content:"AINFO";font-weight:900;letter-spacing:-.04em;color:#24583e;font-size:24px}
+.brand-logo{display:none}
+.breaking,.living-wrap,.living-bar{display:none!important}
+.bottom-nav{display:none!important}
+/* Hide retired public products without deleting their data or admin modules. */
+a[href*="#/video"],a[href*="#/shop"],a[href*="#/jobs"],button[onclick*="drawerGo('video')"],button[onclick*="drawerGo('shop')"],button[onclick*="drawerGo('jobs')"]{display:none!important}
+.home-video-rail,.home-commerce-grid,.home-job-list{display:none!important}
+@media(max-width:760px){.page{padding-bottom:24px}.site-footer{padding-bottom:24px}}
+
+/* English editorial layout polish */
+:root{--blue:#276749;--blue-2:#2f855a;--navy:#173b2d;--green:#276749;--teal:#2f855a;--soft:#f4f8f4}
+.section-head h2,.article-main h1{color:#173b2d}
+.article-main .lead{font-size:1.12rem;line-height:1.75;color:#526357}
+.article-body{line-height:1.85}
+.article-body h2,.article-body h3{color:#173b2d;line-height:1.3}
+.article-main .breadcrumb,.article-main .meta{color:#647568}
+.feature-mini-grid{gap:12px}
