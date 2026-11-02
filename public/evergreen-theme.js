@@ -35,4 +35,48 @@ const originalRender=window.render;
 if(typeof originalRender==='function'){window.render=function(){filterEvergreenArticles();originalRender();if(current()==='home')rebuildHome();};}
 
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+
+async function loadPublishedEvergreen(){
+ try{
+  const response=await fetch('/api/articles?limit=100&sort=latest',{cache:'no-store',headers:{'Accept':'application/json'}});
+  if(!response.ok)throw new Error('Articles API '+response.status);
+  const payload=await response.json();
+  const rows=Array.isArray(payload)?payload:(Array.isArray(payload.articles)?payload.articles:Array.isArray(payload.data)?payload.data:[]);
+  const allowed=new Set(['home & garden','home and garden','gardening','diy','home improvement','indoor plants','outdoor living','landscaping','sustainable living','kitchen garden','houseplants']);
+  const mapped=rows.filter(a=>allowed.has(String(a.category||a.cat||'').trim().toLowerCase())).map((a,i)=>({
+   ...a,id:a.id||a.slug||('published-'+i),cat:a.category||a.cat||'Home & Garden',
+   title:a.title||'Untitled guide',slug:a.slug||'',image:a.image_url||a.image||a.thumbnail||a.cover_image||'',
+   thumb:a.image_url||a.image||a.thumbnail||a.cover_image||'',excerpt:a.excerpt||a.description||a.meta_description||'',
+   desc:a.excerpt||a.description||a.meta_description||'',author:a.author_name||a.author||'AINFO Editorial Team',
+   date:a.published_at||a.publishedAt||a.created_at||'',views:Number(a.views||0),status:'published'
+  }));
+  if(!mapped.length)throw new Error('No published Home & Garden articles returned');
+  articles=mapped;
+  try{localStorage.setItem('ainfo-admin-articles',JSON.stringify(mapped))}catch(e){}
+  if(typeof window.render==='function')window.render();else rebuildHome();
+  document.documentElement.dataset.ainfoArticles='loaded';
+ }catch(error){
+  console.error('[AINFO] Could not load published articles:',error);
+  document.documentElement.dataset.ainfoArticles='error';
+  const app=document.getElementById('app');
+  if(app&&!app.querySelector('.home-grid'))app.innerHTML='<main class="page"><div class="container" style="padding:32px 14px"><h1>Home &amp; Garden Guides</h1><p>We are refreshing our article collection. Please reload this page shortly.</p></div></main>';
+ }
+}
+function convertLegacyNav(){
+ const nav=document.querySelector('.nav-row');
+ if(!nav)return;
+ const topics=['Home','Gardening','Indoor Plants','DIY Projects','Home Improvement','Outdoor Living','Sustainable Living'];
+ nav.innerHTML=topics.map((t,i)=>'<a href="'+(i===0?'/':'/category/'+encodeURIComponent(t.toLowerCase().replace(/\\s+/g,'-'))+'/')+'">'+t+'</a>').join('');
+}
+function hideEmptyAdSlots(){
+ document.querySelectorAll('[id*="ad"],[class*="ad-slot"],.anchor-ad-root').forEach(el=>{
+  if(el.id==='anchorAdRoot'||el.classList.contains('ad-slot')||/ad(slot|container|wrapper)/i.test(el.className||'')){
+   const hasAd=el.querySelector('iframe,ins.adsbygoogle');
+   if(!hasAd&&!el.textContent.trim())el.style.display='none';
+  }
+ });
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{convertLegacyNav();loadPublishedEvergreen();hideEmptyAdSlots()},{once:true});
+else {convertLegacyNav();loadPublishedEvergreen();hideEmptyAdSlots()}
+
 })();
