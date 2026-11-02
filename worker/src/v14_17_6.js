@@ -3,6 +3,7 @@ import previousWorker from './v14_17_5.js';
 const VERSION='14.17.7';
 const FAST_CSS='<link rel="stylesheet" href="/admin-video-sources-fast-v14.17.6.css?v=20260917a">';
 const FAST_JS='<script src="/admin-video-sources-fast-v14.17.6.js?v=20260917a"></script>';
+const EVERGREEN_IMPORT_JS='<script defer src="/evergreen-admin-import.js?v=1"></script>';
 const ADSENSE='<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1267510049036918" crossorigin="anonymous"></script>';
 const EVERGREEN_CATEGORIES=['Home & Garden','Home and Garden','Gardening','DIY','Home Improvement','Indoor Plants','Outdoor Living','Landscaping','Sustainable Living','Kitchen Garden','Houseplants'];
 
