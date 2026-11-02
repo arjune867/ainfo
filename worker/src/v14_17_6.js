@@ -23,7 +23,7 @@ async function publicArticles(req,env,ctx){
 }
 
 async function evergreenSitemap(env){
-  const rows=await env.DB.prepare("SELECT slug,title,published_at,COALESCE(modified_at,updated_at) AS modified_at FROM articles WHERE status='published' AND published_at IS NOT NULL ORDER BY published_at DESC LIMIT 50000").all();
+  const rows=await env.DB.prepare("SELECT slug,title,category,published_at,COALESCE(modified_at,updated_at) AS modified_at FROM articles WHERE status='published' AND published_at IS NOT NULL ORDER BY published_at DESC LIMIT 50000").all();
   const items=(rows.results||[]).filter(a=>categoryAllowed(a.category));
   const base=site(env);
   const urls=[`<url><loc>${base}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>`,...items.map(a=>`<url><loc>${xmlEscape(base+'/read/'+encodeURIComponent(a.slug)+'/')}</loc>${a.modified_at?'<lastmod>'+xmlEscape(new Date(a.modified_at).toISOString().slice(0,10))+'</lastmod>':''}<changefreq>monthly</changefreq><priority>0.8</priority></url>`)];
