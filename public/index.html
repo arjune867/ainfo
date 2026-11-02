@@ -162,6 +162,21 @@
 
 </style>
 <script src="production-sync.js"></script>
+<script id="ainfo-splash-failsafe">
+(function(){
+  function releaseSplash(){
+    var splash=document.getElementById('appSplash');
+    if(!splash)return;
+    splash.classList.add('hide');
+    splash.setAttribute('aria-hidden','true');
+    splash.style.pointerEvents='none';
+    window.setTimeout(function(){splash.style.display='none';},450);
+  }
+  window.setTimeout(releaseSplash,2200);
+  document.addEventListener('DOMContentLoaded',function(){window.setTimeout(releaseSplash,1800);},{once:true});
+  window.addEventListener('error',function(){window.setTimeout(releaseSplash,300);},{once:true});
+})();
+</script>
 </head>
 <body>
   <div class="app-splash" id="appSplash" aria-hidden="true"><div class="splash-inner"><img src="./ainfo-home-garden-logo.svg" alt="AINFO Home &amp; Garden"><b>Home &amp; Garden, Made More Meaningful</b><span>Loading your AINFO experience…</span></div></div>
