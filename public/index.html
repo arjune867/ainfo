@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="id">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
@@ -8,20 +8,20 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="AINFO">
-  <meta name="description" content="AINFO menyajikan berita terkini Indonesia, video berita, lowongan kerja, shopping dan layanan harian dalam portal cepat, ringan dan terpercaya.">
+  <meta name="description" content="AINFO is an evergreen home and garden publication with practical guides, DIY ideas, gardening advice, and home improvement tips.">
   <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
   <meta name="googlebot" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
   <meta name="news_keywords" content="berita Indonesia, berita terkini, nasional, ekonomi, teknologi, olahraga, lifestyle">
-  <meta property="og:locale" content="id_ID">
+  <meta property="og:locale" content="en_US">
   <meta property="og:site_name" content="AINFO">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="AINFO - Berita Terkini Indonesia">
-  <meta property="og:description" content="Berita terkini, video, jobs, shopping dan layanan harian dalam satu portal AINFO.">
+  <meta property="og:title" content="AINFO - Home & Garden Ideas, DIY Projects and Practical Guides">
+  <meta property="og:description" content="Discover practical home and garden ideas, DIY projects, gardening advice, and home improvement guides from AINFO.">
   <meta property="og:url" content="https://www.ainfo.web.id/">
   <meta property="og:image" content="https://www.ainfo.web.id/AINFO.png">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="AINFO - Berita Terkini Indonesia">
-  <meta name="twitter:description" content="Portal berita AINFO: cepat, ringan, informatif dan mudah diakses.">
+  <meta name="twitter:description" content="Practical evergreen guides for better homes, gardens, and everyday living.">
   <meta name="twitter:image" content="https://www.ainfo.web.id/AINFO.png">
   <link rel="canonical" href="https://www.ainfo.web.id/">
   <link rel="icon" type="image/png" sizes="48x48" href="./icon-48.png">
@@ -30,8 +30,8 @@
   <link rel="alternate" type="application/rss+xml" title="AINFO RSS" href="./rss.xml">
   <link rel="sitemap" type="application/xml" title="Sitemap" href="./sitemap.xml">
   <link rel="preload" href="./AINFO.png" as="image" fetchpriority="high">
-  <title>AINFO - Berita Terkini Indonesia, Video, Jobs & Shopping</title>
-  <link rel="manifest" href="./manifest.webmanifest">
+  <title>AINFO - Home & Garden Ideas, DIY Projects and Practical Guides</title>
+  <link rel="manifest" href="./manifest.webmanifest">\n  <link rel="stylesheet" href="./evergreen-theme.css?v=1">
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -532,5 +532,5 @@ async function runGlobalSearch(q){q=String(q||'').trim();if(q.length<2)return;ai
 document.getElementById('globalSearch').addEventListener('keydown',e=>{if(e.key==='Enter'){const q=e.target.value.trim();if(!q)return;runGlobalSearch(q)}});
 window.addEventListener('hashchange',()=>{stopArticleAudio(false);toggleDrawer(false);render()});window.addEventListener('load',()=>{if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});render();syncAuth(true).then(()=>{if(['profile','onboarding'].includes(current()))render()});setTimeout(()=>document.getElementById('appSplash')?.classList.add('hide'),650);setTimeout(()=>{updatePwaInstallButtons();if(!isPwaStandalone()&&!localStorage.getItem(PWA_INSTALL_SEEN))showPwaInstallPopup(true)},1450)});
 </script>
-</body>
+<script src="./evergreen-theme.js?v=1" defer></script>\n</body>
 </html>
