@@ -31,7 +31,8 @@
   <link rel="sitemap" type="application/xml" title="Sitemap" href="./sitemap.xml">
   
   <title>AINFO - Home & Garden Ideas, DIY Projects and Practical Guides</title>
-  <link rel="manifest" href="./manifest.webmanifest">\n  <link rel="stylesheet" href="./evergreen-theme.css?v=4">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./evergreen-theme.css?v=4">
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -532,5 +533,6 @@ async function runGlobalSearch(q){q=String(q||'').trim();if(q.length<2)return;ai
 document.getElementById('globalSearch').addEventListener('keydown',e=>{if(e.key==='Enter'){const q=e.target.value.trim();if(!q)return;runGlobalSearch(q)}});
 window.addEventListener('hashchange',()=>{stopArticleAudio(false);toggleDrawer(false);render()});window.addEventListener('load',()=>{if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});render();syncAuth(true).then(()=>{if(['profile','onboarding'].includes(current()))render()});setTimeout(()=>document.getElementById('appSplash')?.classList.add('hide'),650);setTimeout(()=>{updatePwaInstallButtons();if(!isPwaStandalone()&&!localStorage.getItem(PWA_INSTALL_SEEN))showPwaInstallPopup(true)},1450)});
 </script>
-<script src="./evergreen-theme.js?v=3" defer></script>\n</body>
+<script src="./evergreen-theme.js?v=3" defer></script>
+</body>
 </html>
