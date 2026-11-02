@@ -2,7 +2,7 @@
 const hideSection=(el)=>{if(el)el.style.display='none'};
 const retired=/video berita|semua video|ainfo shopping|pilihan ainfo shopping|lowongan terbaru|cari lowongan|shopping \(|jobs \(/i;
 const replacements=new Map([
- ['Berita Terkini','Latest Articles'],['Berita Pilihan Pembaca','Reader Favorites'],['Rekomendasi Untuk Anda','Recommended Reads'],['Kategori Berita','Explore Topics'],['Beranda','Home'],['Berita','Home'],['Tentang Kami','About'],['Kontak Redaksi','Contact'],['Privasi','Privacy']
+ ['Berita Terkini','Latest Articles'],['Berita Pilihan Pembaca','Reader Favorites'],['Rekomendasi Untuk Anda','Recommended Reads'],['Kategori Berita','Explore Topics'],['Beranda','Home'],['Berita','Home'],['Tentang Kami','About'],['Kontak Redaksi','Contact'],['Privasi','Privacy'],['Terpopuler','Most Read'],['Pilihan Editor','Editor’s Picks'],['Ilustrasi berita AINFO.','Home and garden guide illustration.'],['Komentar','Comments'],['Bagikan','Share'],['Simpan','Save'],['PENCARIAN','SEARCH'],['Beranda','Home'],['Tentang AINFO','About AINFO'],['Redaksi & Penulis','Editorial Team & Authors'],['Kontak Redaksi','Contact'],['Kebijakan Privasi','Privacy Policy'],['Syarat & Ketentuan','Terms & Conditions'],['Disclaimer','Disclaimer'],['RSS Feed','RSS Feed'],['Layanan AINFO','AINFO Services'],['Berita Terkini','Latest Articles'],['Lihat Semua','View All'],['Terpopuler','Most Read'],['Baca Selengkapnya','Read More']
 ]);
 function apply(){
  document.documentElement.lang='en';
@@ -12,7 +12,7 @@ function apply(){
  document.querySelectorAll('.home-rich-section,.section-head').forEach(el=>{const t=(el.innerText||'').trim();if(retired.test(t))hideSection(el.closest('.home-rich-section')||el)});
  document.querySelectorAll('.drawer-section').forEach(el=>{const t=(el.innerText||'').toLowerCase();if(t.includes('kategori berita')){const h=el.querySelector('h4');if(h)h.textContent='Explore Topics'}});
  document.querySelectorAll('a[href*="#/video"],a[href*="#/shop"],a[href*="#/jobs"],button[onclick*="drawerGo(\'video\')"],button[onclick*="drawerGo(\'shop\')"],button[onclick*="drawerGo(\'jobs\')"]').forEach(hideSection);
- const title=document.querySelector('title');if(title)title.textContent='AINFO | Home & Garden Ideas, DIY Projects and Practical Guides';
+ document.querySelectorAll('.breadcrumb').forEach(el=>{el.textContent=el.textContent.replace(/^Home \/ /,'Home / ')});document.querySelectorAll('.article-main .meta').forEach(el=>{el.textContent=el.textContent.replace(/dibaca/g,'reads').replace(/pembaca/g,'readers')});const title=document.querySelector('title');if(title&&location.hash.startsWith('#/article/')){const h=document.querySelector('.article-main h1');if(h)title.textContent=h.textContent+' | Home & Garden Guide - AINFO'}else if(title)title.textContent='AINFO | Home & Garden Ideas, DIY Projects and Practical Guides';
 }
 const start=()=>{apply();new MutationObserver(()=>apply()).observe(document.body,{childList:true,subtree:true,characterData:true});};
 
