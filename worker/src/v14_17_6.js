@@ -48,6 +48,7 @@ async function decorate(req,res){
   if(path.startsWith('/admin')){
     if(!body.includes('/admin-video-sources-fast-v14.17.6.css'))body=/<\/head>/i.test(body)?body.replace(/<\/head>/i,FAST_CSS+'</head>'):FAST_CSS+body;
     if(!body.includes('/admin-video-sources-fast-v14.17.6.js'))body=/<\/body>/i.test(body)?body.replace(/<\/body>/i,FAST_JS+'</body>'):body+FAST_JS;
+    if(!body.includes('/evergreen-admin-import.js'))body=/<\/body>/i.test(body)?body.replace(/<\/body>/i,EVERGREEN_IMPORT_JS+'</body>'):body+EVERGREEN_IMPORT_JS;
     h.set('x-ainfo-admin-video-load','progressive');
   }
   h.delete('content-length');
