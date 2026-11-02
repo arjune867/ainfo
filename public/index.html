@@ -548,6 +548,6 @@ async function runGlobalSearch(q){q=String(q||'').trim();if(q.length<2)return;ai
 document.getElementById('globalSearch').addEventListener('keydown',e=>{if(e.key==='Enter'){const q=e.target.value.trim();if(!q)return;runGlobalSearch(q)}});
 window.addEventListener('hashchange',()=>{stopArticleAudio(false);toggleDrawer(false);render()});window.addEventListener('load',()=>{if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});render();syncAuth(true).then(()=>{if(['profile','onboarding'].includes(current()))render()});setTimeout(()=>document.getElementById('appSplash')?.classList.add('hide'),650);setTimeout(()=>{updatePwaInstallButtons();if(!isPwaStandalone()&&!localStorage.getItem(PWA_INSTALL_SEEN))showPwaInstallPopup(true)},1450)});
 </script>
-<script src="./evergreen-theme.js?v=3" defer></script>
+<script src="./evergreen-theme.js?v=5" defer></script>
 </body>
 </html>
