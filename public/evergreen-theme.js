@@ -16,8 +16,15 @@ function apply(){
 }
 const start=()=>{apply();new MutationObserver(()=>apply()).observe(document.body,{childList:true,subtree:true,characterData:true});};
 
+function filterEvergreenArticles(){
+ if(typeof articles==='undefined'||!Array.isArray(articles))return;
+ const allowed=new Set(['home & garden','home and garden','gardening','diy','home improvement','indoor plants','outdoor living','landscaping','sustainable living','kitchen garden','houseplants']);
+ articles=articles.filter(a=>allowed.has(String(a.cat||a.category||'').trim().toLowerCase()));
+}
 function rebuildHome(){
- if(typeof articles==='undefined'||!Array.isArray(articles)||!articles.length)return;
+ if(typeof articles==='undefined'||!Array.isArray(articles))return;
+ filterEvergreenArticles();
+ if(!articles.length){const app=document.getElementById('app');if(app)app.innerHTML='<main class="page"><div class="container" style="padding:56px 18px;text-align:center"><h1>Fresh ideas for your home and garden are coming soon</h1><p>We are preparing practical, carefully reviewed guides on gardening, DIY projects, indoor plants, and home improvement.</p></div></main>';return;}
  const feed=articles.slice(1,9).map((a,i)=>newsCard(a)+(i===3?adSlot('nativeFeed','ad-native-grid'):'')).join('');
  const recs=articles.slice(2,7).map(a=>homeRecommendationItem(a)).join('');
  const popular=articles.slice(0,5).map((a,i)=>'<div class="popular-item"><span class="num">'+(i+1)+'</span><div><b>'+escapeHtml(a.title)+'</b><div class="meta">'+Number(a.views||0).toLocaleString('en-US')+' reads</div></div></div>').join('');
@@ -25,7 +32,7 @@ function rebuildHome(){
  document.getElementById('app').innerHTML='<div class="page"><div class="container">'+adSlot('topBillboard')+'<div class="home-grid"><section><div class="lead-grid">'+heroArticle(articles[0])+'<div class="mini-stack">'+articles.slice(1,5).map(miniArticle).join('')+'</div></div>'+adSlot('homeLeaderboard')+'<div class="section-head"><div><h2>Latest Home & Garden Guides</h2><p class="home-subtitle">Practical ideas, expert tips and simple projects for a more comfortable, beautiful home.</p></div></div><div class="news-grid">'+feed+'</div></section><aside class="popular-side"><div class="panel"><h3>Most Read</h3>'+popular+'</div></aside></div><section class="home-rich-section"><div class="section-head"><div><h2>Recommended for You</h2><p class="home-subtitle">Useful ideas for your next home project.</p></div></div><div class="recommend-list">'+recs+'</div></section><section class="home-rich-section"><div class="section-head"><div><h2>Explore Home & Garden Topics</h2></div></div><div class="feature-mini-grid">'+cats+'</div></section></div></div>';
 }
 const originalRender=window.render;
-if(typeof originalRender==='function'){window.render=function(){originalRender();if(current()==='home')rebuildHome();};}
+if(typeof originalRender==='function'){window.render=function(){filterEvergreenArticles();originalRender();if(current()==='home')rebuildHome();};}
 
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
